@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  
+  /* Linear-style fine shadow glows */
+  --shadow-glow: 0 0 15px rgba(255, 255, 255, 0.03), 0 0 3px rgba(255, 255, 255, 0.05);
+  --shadow-glow-hover: 0 0 20px rgba(0, 240, 255, 0.04), 0 0 4px rgba(0, 240, 255, 0.08);
+}
+
+@layer base {
+  body {
+    background-color: #09090b; /* Vercel dark black */
+    color: #fafafa;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a; /* zinc-800 */
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46; /* zinc-700 */
+}
+
+/* Keyframes for soft pulse glow */
+@keyframes soft-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}
+
+.pulse-dot {
+  animation: soft-pulse 2s infinite ease-in-out;
+}
+
+/* Dark-themed checkerboard background for color swatches */
+.checkerboard-bg {
+  background-color: #18181b;
+  background-image: 
+    linear-gradient(45deg, #27272a 25%, transparent 25%), 
+    linear-gradient(-45deg, #27272a 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #27272a 75%), 
+    linear-gradient(-45deg, transparent 75%, #27272a 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+}
