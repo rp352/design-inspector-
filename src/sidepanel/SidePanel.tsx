@@ -181,8 +181,18 @@ export const SidePanel: React.FC = () => {
           setHoveredElement(null);
           setSelectedElement(null);
         }
+      } else if (response && response.error) {
+        setStatus('error');
+        const isConnectionError = response.error.includes('Could not establish connection');
+        const errorMsg = isConnectionError 
+          ? 'Cannot connect to webpage. Please refresh the page tab and try again.' 
+          : `Failed: ${response.error}`;
+        setStatusText(errorMsg);
+        addDevLog('system', 'ERROR', `Failed toggling inspect: ${response.error}`);
       }
     } catch (err: any) {
+      setStatus('error');
+      setStatusText(`Error: ${err.message}`);
       addDevLog('system', 'ERROR', `Failed toggling inspect: ${err.message}`);
     }
   };
@@ -194,8 +204,14 @@ export const SidePanel: React.FC = () => {
       if (response && response.success) {
         setSelectedElement(null);
         addDevLog('system', 'RESET', 'Selection un-frozen. Resumed hover inspector.');
+      } else if (response && response.error) {
+        setStatus('error');
+        setStatusText(`Reset failed: ${response.error}`);
+        addDevLog('system', 'ERROR', `Failed to reset selection: ${response.error}`);
       }
     } catch (err: any) {
+      setStatus('error');
+      setStatusText(`Reset error: ${err.message}`);
       addDevLog('system', 'ERROR', `Failed to reset selection: ${err.message}`);
     }
   };
