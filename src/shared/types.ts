@@ -183,6 +183,18 @@ export interface EffectDetails {
   backdropFilters: FilterValues;
 }
 
+export interface DesignToken {
+  category: 'typography' | 'color' | 'spacing' | 'radius' | 'shadow' | 'opacity' | 'border' | 'background';
+  tokenName: string;
+  value: string;
+  role: string;
+}
+
+export interface DesignTokenReport {
+  tokens: DesignToken[];
+  system: 'semantic' | 'tailwind' | 'material' | 'custom';
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -200,6 +212,7 @@ export interface ElementHoverInfo {
   asset: AssetData;
   background?: BackgroundDetails;
   effects?: EffectDetails;
+  tokens?: DesignTokenReport;
 }
 
 export interface TabInfo {
@@ -226,6 +239,7 @@ export interface ElementSelectInfo {
   asset: AssetData;
   background?: BackgroundDetails;
   effects?: EffectDetails;
+  tokens?: DesignTokenReport;
 }
 
 export interface MessagePayloadMap {

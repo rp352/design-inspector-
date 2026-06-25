@@ -4,6 +4,7 @@ import { CopyButton } from '../components/CopyButton';
 import { BoxModel } from '../components/BoxModel';
 import { identifyFont } from '../shared/fontUtils';
 import { generateJSONReport, generateCleanCSS, generateTailwindSummary } from '../shared/exportUtils';
+import { inferDesignTokens } from '../shared/tokenInference';
 import { listenForMessages, sendMessageToBackground, sendMessageToTab } from '../shared/messaging';
 import type { TabInfo, ElementHoverInfo, ElementSelectInfo } from '../shared/types';
 
@@ -82,6 +83,7 @@ export const SidePanel: React.FC = () => {
   const [selectedElement, setSelectedElement] = useState<ElementSelectInfo | null>(null);
   const [detectedStack, setDetectedStack] = useState<string[]>(['MV3']);
   const [showSvgMarkup, setShowSvgMarkup] = useState(false);
+  const [tokenSystem, setTokenSystem] = useState<'semantic' | 'tailwind' | 'material'>('semantic');
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -2083,6 +2085,83 @@ export const SidePanel: React.FC = () => {
                       </svg>
                       <span>Copy Tailwind</span>
                     </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 11: Design Tokens */}
+          <InspectorCard
+            title="Design Tokens"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="6" />
+                <circle cx="12" cy="12" r="2" />
+              </svg>
+            }
+            emptyMessage="No active element selected to infer tokens."
+            isEmpty={!activeElement}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Tokens inferred</span><span className="text-zinc-400">None</span></div>
+              </div>
+            }
+          >
+            {activeElement && (() => {
+              const report = inferDesignTokens(activeElement, tokenSystem);
+              return (
+                <div className="space-y-3 font-mono text-[10px]">
+                  {/* System Toggle Tabs */}
+                  <div className="flex border-b border-[#1f1f23] gap-4">
+                    {(['semantic', 'tailwind', 'material'] as const).map((sys) => (
+                      <button
+                        key={sys}
+                        onClick={() => setTokenSystem(sys)}
+                        className={`text-[9px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                          tokenSystem === sys
+                            ? 'border-[#00f0ff] text-[#00f0ff]'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        {sys}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Tokens list */}
+                  <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                    {report.tokens.length === 0 ? (
+                      <div className="text-zinc-600 text-center py-4 text-[9px] uppercase tracking-widest">No tokens inferred for this system.</div>
+                    ) : (
+                      report.tokens.map((token, idx) => (
+                        <div key={idx} className="flex flex-col gap-1 py-1.5 border-b border-[#1f1f23]/40 last:border-0 text-[9.5px]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                                token.category === 'typography' ? 'bg-blue-950 border border-blue-900/60 text-blue-400' :
+                                token.category === 'color' ? 'bg-emerald-950 border border-emerald-900/60 text-emerald-400' :
+                                token.category === 'spacing' ? 'bg-amber-950 border border-amber-900/60 text-amber-400' :
+                                token.category === 'radius' ? 'bg-purple-950 border border-purple-900/60 text-purple-400' :
+                                token.category === 'shadow' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' :
+                                'bg-zinc-950 border border-zinc-800 text-zinc-400'
+                              }`}>
+                                {token.category}
+                              </span>
+                              <span className="text-zinc-200 font-semibold">{token.tokenName}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-zinc-400 font-semibold">{token.value}</span>
+                              <CopyButton value={token.value} />
+                            </div>
+                          </div>
+                          <span className="text-zinc-500 text-[8.5px] pl-1.5 border-l border-zinc-800 leading-tight">
+                            {token.role}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               );
