@@ -101,7 +101,8 @@ export interface MessagePayloadMap {
   'ELEMENT_HOVERED': ElementHoverInfo;
   'ELEMENT_SELECTED': ElementSelectInfo;
   'RESET_SELECTION': undefined;
-  'STATUS_UPDATE': { status: 'ready' | 'inspecting' | 'error'; message?: string };
+  'STATUS_UPDATE': { status: 'ready' | 'inspecting' | 'error'; message?: string; detectedStack?: string[] };
+  'DETECT_STACK': undefined;
 }
 
 export interface ExtensionMessage<T extends keyof MessagePayloadMap = keyof MessagePayloadMap> {

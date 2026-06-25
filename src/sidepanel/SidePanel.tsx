@@ -79,6 +79,7 @@ export const SidePanel: React.FC = () => {
   const [devLogs, setDevLogs] = useState<DevLogEntry[]>([]);
   const [hoveredElement, setHoveredElement] = useState<ElementHoverInfo | null>(null);
   const [selectedElement, setSelectedElement] = useState<ElementSelectInfo | null>(null);
+  const [detectedStack, setDetectedStack] = useState<string[]>(['MV3']);
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -103,6 +104,18 @@ export const SidePanel: React.FC = () => {
         if (tabInfo && !tabInfo.error) {
           setActiveTab(tabInfo);
           addDevLog('system', 'TAB_INFO', `Target attached: "${tabInfo.title}"`);
+          
+          // Request current tech stack from the page content script
+          sendMessageToTab(tabInfo.tabId, 'DETECT_STACK', undefined, 'sidepanel')
+            .then((res: any) => {
+              if (res && res.stack) {
+                setDetectedStack(res.stack);
+                addDevLog('system', 'STACK', `Detected stack: ${res.stack.join(', ')}`);
+              }
+            })
+            .catch(() => {
+              // Ignore if content script is not injected yet (e.g. on load / system pages)
+            });
         }
       })
       .catch((err) => {
@@ -124,16 +137,20 @@ export const SidePanel: React.FC = () => {
         setSelectedElement(null);
         setStatus('ready');
         setStatusText('Tab navigated.');
+        setDetectedStack(['MV3']);
         addDevLog('system', 'TAB_NAV', `Switched page: "${tabInfo.title}"`);
         sendResponse({ ack: true });
         return false;
       }
 
       if (message.type === 'STATUS_UPDATE') {
-        const { status: newStatus, message: statusMsg } = message.payload;
+        const { status: newStatus, message: statusMsg, detectedStack: newStack } = message.payload;
         setStatus(newStatus);
         if (statusMsg) {
           setStatusText(statusMsg);
+        }
+        if (newStack) {
+          setDetectedStack(newStack);
         }
         sendResponse({ ack: true });
         return false;
@@ -834,18 +851,11 @@ export const SidePanel: React.FC = () => {
             Detected Stack
           </span>
           <div className="flex flex-wrap gap-1 mt-0.5">
-            <span className="text-[9px] font-mono bg-zinc-950 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded leading-none">
-              React 19
-            </span>
-            <span className="text-[9px] font-mono bg-zinc-950 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded leading-none">
-              Vite
-            </span>
-            <span className="text-[9px] font-mono bg-zinc-950 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded leading-none">
-              TailwindCSS
-            </span>
-            <span className="text-[9px] font-mono bg-zinc-950 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded leading-none">
-              MV3
-            </span>
+            {detectedStack.map((tech) => (
+              <span key={tech} className="text-[9px] font-mono bg-zinc-950 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded leading-none">
+                {tech}
+              </span>
+            ))}
           </div>
         </div>
 

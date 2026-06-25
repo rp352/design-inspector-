@@ -5,10 +5,115 @@ import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
 
+/**
+ * Scans the active DOM structure for framework and technology signatures.
+ * Performs inspections safely to avoid trigger-blocking CSP (Content Security Policy) rules.
+ */
+function detectTechStack(): string[] {
+  const stack: string[] = [];
+
+  // 1. Next.js
+  if (document.getElementById('__NEXT_DATA__') || document.querySelector('script[src*="/_next/"]')) {
+    stack.push('Next.js');
+  }
+
+  // 2. React
+  if (
+    document.querySelector('[data-reactroot]') || 
+    document.querySelector('script[src*="react"]') ||
+    document.querySelector('script[src*="next/static"]') ||
+    document.querySelector('div[id^="__next"]')
+  ) {
+    stack.push('React');
+  }
+
+  // 3. Vue
+  const hasVueAttr = Array.from(document.querySelectorAll('*')).slice(0, 100).some(el => {
+    return Array.from(el.attributes).some(attr => attr.name.startsWith('data-v-') || attr.name.startsWith('v-'));
+  });
+  if (hasVueAttr || document.querySelector('script[src*="vue"]')) {
+    stack.push('Vue');
+  }
+
+  // 4. Angular
+  if (document.querySelector('[ng-version]') || document.querySelector('script[src*="angular"]')) {
+    stack.push('Angular');
+  }
+
+  // 5. Svelte
+  const hasSvelteClass = Array.from(document.querySelectorAll('*')).slice(0, 100).some(el => {
+    return Array.from(el.classList).some(c => c.startsWith('svelte-'));
+  });
+  if (hasSvelteClass) {
+    stack.push('Svelte');
+  }
+
+  // 6. Bootstrap
+  const bootstrapLink = document.querySelector('link[href*="bootstrap"]') || document.querySelector('script[src*="bootstrap"]');
+  const hasBootstrapClasses = document.querySelector('.row') && document.querySelector('[class*="col-"]') && document.querySelector('.container');
+  if (bootstrapLink || hasBootstrapClasses) {
+    stack.push('Bootstrap');
+  }
+
+  // 7. TailwindCSS
+  const hasTailwindStyles = Array.from(document.querySelectorAll('style')).some(s => {
+    const content = s.textContent || '';
+    return content.includes('--tw-') || content.includes('tailwindcss');
+  });
+  const hasTailwindLink = document.querySelector('link[href*="tailwind"]');
+  const hasTailwindClasses = Array.from(document.querySelectorAll('*')).slice(0, 150).filter(el => {
+    const classList = Array.from(el.classList);
+    return classList.some(c => 
+      c === 'flex' || 
+      c === 'grid' || 
+      c.startsWith('bg-') || 
+      c.startsWith('text-') || 
+      c.startsWith('p-') || 
+      c.startsWith('m-') || 
+      c.startsWith('rounded-') ||
+      c.startsWith('border-') ||
+      c.startsWith('gap-')
+    );
+  }).length >= 15;
+
+  if (hasTailwindStyles || hasTailwindLink || hasTailwindClasses) {
+    stack.push('TailwindCSS');
+  }
+
+  // 8. jQuery
+  if (document.querySelector('script[src*="jquery"]') || (window as any).jQuery || (window as any).$) {
+    stack.push('jQuery');
+  }
+
+  // 9. WordPress
+  if (
+    document.querySelector('meta[name="generator"][content*="WordPress"]') ||
+    document.querySelector('link[href*="/wp-content/"]') ||
+    document.querySelector('link[href*="/wp-includes/"]')
+  ) {
+    stack.push('WordPress');
+  }
+
+  // 10. Vite
+  if (document.querySelector('script[src*="/@vite/client"]') || document.querySelector('script[type="module"][src*="src/main"]')) {
+    stack.push('Vite');
+  }
+
+  // Standard Chrome Extension tags
+  stack.push('MV3');
+
+  // De-duplicate
+  return Array.from(new Set(stack));
+}
+
 // Announce presence to the background/side panel
 sendMessageToBackground(
   'STATUS_UPDATE',
-  { status: 'ready', message: `Content Script loaded on: ${window.location.hostname}` },
+  { 
+    status: 'ready', 
+    message: `Content Script loaded on: ${window.location.hostname}`,
+    detectedStack: detectTechStack() 
+  },
   'content'
 ).catch((err) => {
   console.debug('[Design Inspector] Background connection not established yet:', err.message);
@@ -344,6 +449,12 @@ function destroyInspector() {
 
 // Listen to inspect commands
 listenForMessages((message, _sender, sendResponse) => {
+  if (message.type === 'DETECT_STACK') {
+    const stack = detectTechStack();
+    sendResponse({ stack });
+    return false;
+  }
+
   if (message.type === 'PING') {
     const pongResponse = createMessage(
       'PONG',
