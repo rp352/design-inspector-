@@ -89,6 +89,13 @@ export interface SVGDetails {
   rawContent: string;
 }
 
+export interface IconDetails {
+  library: string;
+  iconName?: string;
+  confidence: number;
+  documentation?: string;
+}
+
 export interface AssetData {
   type: 'image' | 'svg-inline' | 'svg-external' | 'background-image' | 'video' | 'canvas' | 'lottie' | 'icon' | 'unknown';
   url?: string;
@@ -98,6 +105,7 @@ export interface AssetData {
   svgContent?: string;
   imageDetails?: ImageDetails;
   svgDetails?: SVGDetails;
+  iconDetails?: IconDetails;
 }
 
 export interface ElementHoverInfo {

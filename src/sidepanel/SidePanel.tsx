@@ -1033,6 +1033,210 @@ export const SidePanel: React.FC = () => {
               }
 
               const svgDetails = asset.svgDetails;
+              const iconDetails = asset.iconDetails;
+              if (iconDetails) {
+                const getLibraryBadgeClass = (lib: string) => {
+                  switch (lib) {
+                    case 'Lucide': return 'bg-cyan-950 border-cyan-800 text-cyan-400';
+                    case 'Heroicons': return 'bg-orange-950 border-orange-800 text-orange-400';
+                    case 'Font Awesome': return 'bg-blue-950 border-blue-800 text-blue-400';
+                    case 'Material Symbols': return 'bg-emerald-950 border-emerald-800 text-emerald-400';
+                    case 'Bootstrap Icons': return 'bg-purple-950 border-purple-800 text-purple-400';
+                    case 'Remix Icons': return 'bg-indigo-950 border-indigo-800 text-indigo-400';
+                    case 'Tabler Icons': return 'bg-teal-950 border-teal-800 text-teal-400';
+                    case 'Feather': return 'bg-pink-950 border-pink-800 text-pink-400';
+                    case 'Ionicons': return 'bg-sky-950 border-sky-800 text-sky-400';
+                    case 'Phosphor': return 'bg-amber-950 border-amber-800 text-amber-400';
+                    default: return 'bg-zinc-950 border-zinc-800 text-zinc-400';
+                  }
+                };
+
+                const downloadSVG = (content: string) => {
+                  const blob = new Blob([content], { type: 'image/svg+xml' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${iconDetails.iconName || 'icon'}.svg`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                };
+
+                const hasSvg = svgDetails && svgDetails.rawContent;
+
+                return (
+                  <div className="space-y-3">
+                    {/* Preview Frame */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[120px] flex items-center justify-center overflow-hidden checkerboard-bg p-2 relative shadow-inner">
+                      {hasSvg ? (
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: svgDetails.rawContent }}
+                          className="[&>svg]:max-h-12 [&>svg]:max-w-12 [&>svg]:w-auto [&>svg]:h-auto [&>svg]:object-contain flex items-center justify-center h-full w-full [&>svg]:text-white [&>svg]:fill-none [&>svg]:stroke-current"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-zinc-500">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-purple-400">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                          </svg>
+                          <span className="text-[8.5px] font-mono uppercase tracking-wider">Font-based Icon</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Navigation Tabs (if SVG is available) */}
+                    {hasSvg && (
+                      <div className="flex border-b border-[#1f1f23] gap-4">
+                        <button
+                          onClick={() => setShowSvgMarkup(false)}
+                          className={`text-[9.5px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                            !showSvgMarkup
+                              ? 'border-[#00f0ff] text-[#00f0ff]'
+                              : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          Properties
+                        </button>
+                        <button
+                          onClick={() => setShowSvgMarkup(true)}
+                          className={`text-[9.5px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                            showSvgMarkup
+                              ? 'border-[#00f0ff] text-[#00f0ff]'
+                              : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                          }`}
+                        >
+                          Source Markup
+                        </button>
+                      </div>
+                    )}
+
+                    {(!hasSvg || !showSvgMarkup) ? (
+                      /* Properties View */
+                      <div className="space-y-2 text-[10px] font-mono">
+                        {/* Library */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Icon Library</span>
+                          <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${getLibraryBadgeClass(iconDetails.library)}`}>
+                            {iconDetails.library}
+                          </span>
+                        </div>
+
+                        {/* Icon Name */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Extracted Name</span>
+                          <span className="text-zinc-200 font-semibold">{iconDetails.iconName || 'Custom Icon'}</span>
+                        </div>
+
+                        {/* Confidence */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Confidence</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-16 h-1.5 bg-zinc-900 border border-zinc-800 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-[#00f0ff]" 
+                                style={{ width: `${iconDetails.confidence * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-zinc-300 font-semibold">{Math.round(iconDetails.confidence * 100)}%</span>
+                          </div>
+                        </div>
+
+                        {/* Docs reference links */}
+                        {iconDetails.documentation && (
+                          <div className="flex items-center justify-between text-zinc-500">
+                            <span className="text-zinc-600">Documentation</span>
+                            <a
+                              href={iconDetails.documentation}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[9px] text-[#00f0ff] hover:underline font-bold uppercase tracking-wider flex items-center gap-0.5"
+                            >
+                              <span>Docs Link</span>
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="mt-0.5">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                              </svg>
+                            </a>
+                          </div>
+                        )}
+
+                        {/* SVG Properties if present */}
+                        {svgDetails && (
+                          <>
+                            <div className="flex items-center justify-between text-zinc-500 pt-1.5 border-t border-[#1f1f23]/40">
+                              <span className="text-zinc-600">viewBox</span>
+                              <span className="text-zinc-300">{svgDetails.viewBox || '—'}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-zinc-500">
+                              <span className="text-zinc-600">Fill / Stroke</span>
+                              <span className="text-zinc-300">
+                                {svgDetails.fill || 'none'} / {svgDetails.stroke || 'none'}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      /* Source View */
+                      <div className="space-y-2.5">
+                        <div className="relative">
+                          <pre className="bg-[#050506] border border-[#1f1f23] rounded-md p-3 font-mono text-[9px] text-zinc-300 overflow-x-auto max-h-[220px] whitespace-pre select-text leading-relaxed">
+                            <code>{svgDetails.rawContent}</code>
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions Row */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#1f1f23]/60">
+                      {hasSvg ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(svgDetails.rawContent);
+                              addDevLog('system', 'COPY_ICON', 'Icon SVG content copied.');
+                            }}
+                            className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[9.5px] font-bold py-1.5 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                            <span>Copy SVG</span>
+                          </button>
+                          <button
+                            onClick={() => downloadSVG(svgDetails.rawContent)}
+                            className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[9.5px] font-bold py-1.5 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span>Download</span>
+                          </button>
+                        </>
+                      ) : null}
+                      
+                      {iconDetails.documentation && (
+                        <button
+                          onClick={() => window.open(iconDetails.documentation, '_blank')}
+                          className="flex-1 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 hover:border-[#a855f7]/60 text-[#a855f7] text-[9.5px] font-bold py-1.5 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                          <span>Open Docs</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
               if (svgDetails) {
                 const getSvgTypeLabel = (t: string) => {
                   switch (t) {

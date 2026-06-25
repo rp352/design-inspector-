@@ -1,6 +1,7 @@
 import type { AssetData } from './types';
 import { detectImageSource } from './imageSourceUtils';
 import { extractSVGDetails } from './svgUtils';
+import { detectIconLibrary } from './iconDetectorUtils';
 
 /**
  * Normalizes and extracts mime type from a URL or data URL.
@@ -76,13 +77,17 @@ export function detectElementAsset(el: HTMLElement): AssetData {
   if (svgEl) {
     const isSmall = dimensions.width <= 32 && dimensions.height <= 32;
     const svgDetails = extractSVGDetails(svgEl as SVGSVGElement);
+    const iconDetails = detectIconLibrary(el);
+    const isRecognizedIcon = iconDetails.library !== 'Custom Icon';
+    
     return {
-      type: isSmall ? 'icon' : 'svg-inline',
+      type: isSmall || isRecognizedIcon ? 'icon' : 'svg-inline',
       isInline: true,
       mimeType: 'image/svg+xml',
       dimensions,
       svgContent: svgEl.outerHTML,
-      svgDetails
+      svgDetails,
+      iconDetails: isRecognizedIcon || isSmall ? iconDetails : undefined
     };
   }
   
@@ -101,17 +106,19 @@ export function detectElementAsset(el: HTMLElement): AssetData {
     };
   }
 
-  // 5. Check for Icon (Font Icons or tags like <i>, <span> with icon classes)
-  const isIconTag = tagName === 'i' || tagName === 'span';
+  // 5. Check for Icon (Font Icons or tags like <i>, <span>, <ion-icon> with icon classes)
+  const isIconTag = tagName === 'i' || tagName === 'span' || tagName === 'ion-icon';
   const hasIconClasses = Array.from(el.classList).some(c => {
     const cl = c.toLowerCase();
-    return cl.startsWith('fa-') || cl === 'fa' || cl.startsWith('icon-') || cl.startsWith('lucide-') || cl.startsWith('tabler-icon') || cl.startsWith('feather-') || cl.startsWith('material-icons');
+    return cl.startsWith('fa-') || cl === 'fa' || cl.startsWith('icon-') || cl.startsWith('lucide-') || cl.startsWith('tabler-icon') || cl.startsWith('feather-') || cl.startsWith('material-icons') || cl.startsWith('ri-') || cl.startsWith('bi-') || cl.startsWith('ph-');
   });
-  if ((isIconTag && hasIconClasses) || (el.getAttribute('role') === 'img' && hasIconClasses)) {
+  if ((isIconTag && (hasIconClasses || tagName === 'ion-icon')) || (el.getAttribute('role') === 'img' && hasIconClasses)) {
+    const iconDetails = detectIconLibrary(el);
     return {
       type: 'icon',
       isInline: true,
-      dimensions
+      dimensions,
+      iconDetails
     };
   }
   
