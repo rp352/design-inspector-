@@ -8,6 +8,7 @@ import { extractEffectDetails } from '../shared/effectUtils';
 import { inferDesignTokens } from '../shared/tokenInference';
 import { extractTypographyIntelligence } from '../shared/typographyIntelligence';
 import { extractColorIntelligence } from '../shared/colorIntelligence';
+import { extractSpacingIntelligence } from '../shared/spacingIntelligence';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -291,6 +292,7 @@ function handleMouseMove(e: MouseEvent) {
   const typographyIntelligence = extractTypographyIntelligence(target);
   
   const colorIntelligence = extractColorIntelligence(colors);
+  const spacingIntelligence = extractSpacingIntelligence(layout);
   
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -320,7 +322,8 @@ function handleMouseMove(e: MouseEvent) {
       effects,
       tokens,
       typographyIntelligence,
-      colorIntelligence
+      colorIntelligence,
+      spacingIntelligence
     },
     'content'
   ).catch((err) => {
@@ -353,7 +356,8 @@ function handleMouseMove(e: MouseEvent) {
             effects,
             tokens,
             typographyIntelligence,
-            colorIntelligence
+            colorIntelligence,
+            spacingIntelligence
           },
           'content'
         ).catch(() => {});
@@ -406,6 +410,7 @@ function handleMouseClick(e: MouseEvent) {
   const typographyIntelligence = extractTypographyIntelligence(target);
 
   const colorIntelligence = extractColorIntelligence(colors);
+  const spacingIntelligence = extractSpacingIntelligence(layout);
 
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -436,7 +441,8 @@ function handleMouseClick(e: MouseEvent) {
       effects,
       tokens,
       typographyIntelligence,
-      colorIntelligence
+      colorIntelligence,
+      spacingIntelligence
     },
     'content'
   ).catch((err) => {
@@ -469,7 +475,8 @@ function handleMouseClick(e: MouseEvent) {
             effects,
             tokens,
             typographyIntelligence,
-            colorIntelligence
+            colorIntelligence,
+            spacingIntelligence
           },
           'content'
         ).catch(() => {});

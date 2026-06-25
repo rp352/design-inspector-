@@ -84,6 +84,7 @@ export const SidePanel: React.FC = () => {
   const [detectedStack, setDetectedStack] = useState<string[]>(['MV3']);
   const [showSvgMarkup, setShowSvgMarkup] = useState(false);
   const [tokenSystem, setTokenSystem] = useState<'semantic' | 'tailwind' | 'material'>('semantic');
+  const [spacingHistory, setSpacingHistory] = useState<number[]>([]);
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -163,12 +164,22 @@ export const SidePanel: React.FC = () => {
 
       if (message.type === 'ELEMENT_HOVERED') {
         setHoveredElement(message.payload);
+        const items = message.payload.spacingIntelligence?.spacingItems || [];
+        if (items.length > 0) {
+          const newVals = items.map((it: any) => it.valuePx);
+          setSpacingHistory((prev) => [...prev, ...newVals]);
+        }
         sendResponse({ ack: true });
         return false;
       }
 
       if (message.type === 'ELEMENT_SELECTED') {
         setSelectedElement(message.payload);
+        const items = message.payload.spacingIntelligence?.spacingItems || [];
+        if (items.length > 0) {
+          const newVals = items.map((it: any) => it.valuePx);
+          setSpacingHistory((prev) => [...prev, ...newVals]);
+        }
         addDevLog('in', 'SELECT', `Element selected: ${message.payload.tagName}${message.payload.id}`);
         sendResponse({ ack: true });
         return false;
@@ -2451,6 +2462,136 @@ export const SidePanel: React.FC = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 14: Spacing Intelligence */}
+          <InspectorCard
+            title="Spacing Intelligence"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 16V8a2 2 0 0 0-2-2h-5M3 8v8a2 2 0 0 0 2 2h5" />
+                <path d="M10 12h4" />
+              </svg>
+            }
+            emptyMessage={!activeElement ? "No active element selected to analyze spacing." : "Computing spacing intelligence..."}
+            isEmpty={!activeElement || !activeElement.spacingIntelligence}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Spacing Intelligence</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.spacingIntelligence && (() => {
+              const si = activeElement.spacingIntelligence;
+              
+              // Calculate consistency score dynamically against history
+              const activeSpacing = si.spacingItems || [];
+              let consistencyVal = 100;
+              if (spacingHistory.length > 0 && activeSpacing.length > 0) {
+                let matched = 0;
+                activeSpacing.forEach((it) => {
+                  if (spacingHistory.includes(it.valuePx)) {
+                    matched++;
+                  }
+                });
+                consistencyVal = Math.round((matched / activeSpacing.length) * 100);
+              }
+
+              return (
+                <div className="space-y-4 font-mono text-[10px]">
+                  {/* Spacing Metrics Grid */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Grid Compliance */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">8pt Grid Compliance</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-white">{si.gridComplianceScore}%</span>
+                        <span className={`text-[7.5px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                          si.gridComplianceScore === 100 ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
+                          si.gridComplianceScore >= 70 ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                          'bg-rose-950/60 border border-rose-900/40 text-rose-400'
+                        }`}>
+                          {si.gridComplianceScore === 100 ? 'Strict' :
+                           si.gridComplianceScore >= 70 ? 'Partial' : 'Fluid'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Site Consistency */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Spacing Consistency</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-white">{consistencyVal}%</span>
+                        <span className={`text-[7.5px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                          consistencyVal >= 90 ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
+                          consistencyVal >= 60 ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                          'bg-amber-950/60 border border-amber-900/40 text-amber-400'
+                        }`}>
+                          {consistencyVal >= 90 ? 'High' :
+                           consistencyVal >= 60 ? 'Moderate' : 'Draft'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Spacing Map / Strip Visualizer */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider block">Visual Spacing Map</span>
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3.5">
+                      {activeSpacing.length === 0 ? (
+                        <div className="text-center py-4 text-[9px] text-zinc-600 uppercase tracking-widest">No active spacing properties applied.</div>
+                      ) : (
+                        activeSpacing.map((item, idx) => {
+                          // Calculate width percentage relative to 32px baseline
+                          const pct = Math.min(100, Math.round((item.valuePx / 32) * 100));
+                          
+                          // Style color properties based on type
+                          const barBg = item.type === 'margin' ? 'bg-amber-500/80 border-amber-500/30' :
+                                        item.type === 'padding' ? 'bg-emerald-500/80 border-emerald-500/30' :
+                                        'bg-cyan-500/80 border-cyan-500/30';
+                          const typeLabel = item.type === 'margin' ? 'Margin' :
+                                            item.type === 'padding' ? 'Padding' : 'Gap';
+                          const dirLabel = item.direction === 'all' ? '' : ` ${item.direction}`;
+
+                          return (
+                            <div key={idx} className="space-y-1 text-[9px]">
+                              {/* Spacing labels row */}
+                              <div className="flex justify-between text-zinc-400 font-sans">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                    item.type === 'margin' ? 'bg-amber-500' :
+                                    item.type === 'padding' ? 'bg-emerald-500' : 'bg-cyan-500'
+                                  }`} />
+                                  <span className="font-semibold text-zinc-300 capitalize">{typeLabel}{dirLabel}</span>
+                                </div>
+                                <div className="flex items-center gap-1 font-mono text-[9.5px]">
+                                  <span className="text-[#00f0ff] font-bold">{item.valuePx}px</span>
+                                  <span className="text-zinc-600">/</span>
+                                  <span className="text-zinc-400 font-semibold">{item.tokenName}</span>
+                                </div>
+                              </div>
+
+                              {/* Relative Progress Strip */}
+                              <div className="h-2 w-full bg-zinc-950 border border-zinc-900/60 rounded overflow-hidden relative">
+                                <div 
+                                  className={`h-full border-r transition-all duration-500 ${barBg}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Feedback Guidance */}
+                  <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic pt-1">
+                    {si.gridFeedback}
+                  </p>
                 </div>
               );
             })()}

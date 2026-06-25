@@ -232,6 +232,20 @@ export interface ColorIntelligence {
   contrast: ColorContrastDetails | null;
 }
 
+export interface SpacingItem {
+  type: 'padding' | 'margin' | 'gap';
+  direction: 'top' | 'right' | 'bottom' | 'left' | 'row' | 'column' | 'all';
+  valuePx: number;
+  tokenName: string;
+  isGridCompliant: boolean; // divisible by 8
+}
+
+export interface SpacingIntelligence {
+  spacingItems: SpacingItem[];
+  gridComplianceScore: number; // 0 - 100
+  gridFeedback: string;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -252,6 +266,7 @@ export interface ElementHoverInfo {
   tokens?: DesignTokenReport;
   typographyIntelligence?: TypographyIntelligence;
   colorIntelligence?: ColorIntelligence;
+  spacingIntelligence?: SpacingIntelligence;
 }
 
 export interface TabInfo {
@@ -281,6 +296,7 @@ export interface ElementSelectInfo {
   tokens?: DesignTokenReport;
   typographyIntelligence?: TypographyIntelligence;
   colorIntelligence?: ColorIntelligence;
+  spacingIntelligence?: SpacingIntelligence;
 }
 
 export interface MessagePayloadMap {
