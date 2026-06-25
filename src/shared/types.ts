@@ -246,6 +246,26 @@ export interface SpacingIntelligence {
   gridFeedback: string;
 }
 
+export interface CornerClassification {
+  topLeft: 'Sharp' | 'Small' | 'Medium' | 'Large' | 'Pill' | 'Circle';
+  topRight: 'Sharp' | 'Small' | 'Medium' | 'Large' | 'Pill' | 'Circle';
+  bottomRight: 'Sharp' | 'Small' | 'Medium' | 'Large' | 'Pill' | 'Circle';
+  bottomLeft: 'Sharp' | 'Small' | 'Medium' | 'Large' | 'Pill' | 'Circle';
+}
+
+export interface BorderRadiusIntelligence {
+  classification: 'Sharp' | 'Small' | 'Medium' | 'Large' | 'Pill' | 'Circle' | 'Mixed';
+  corners: CornerClassification;
+  raw: {
+    topLeft: string;
+    topRight: string;
+    bottomRight: string;
+    bottomLeft: string;
+  };
+  uniform: boolean;
+  gridCompliance: boolean; // divisible by 2px (typical standard radius scale)
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -267,6 +287,7 @@ export interface ElementHoverInfo {
   typographyIntelligence?: TypographyIntelligence;
   colorIntelligence?: ColorIntelligence;
   spacingIntelligence?: SpacingIntelligence;
+  borderRadiusIntelligence?: BorderRadiusIntelligence;
 }
 
 export interface TabInfo {
@@ -297,6 +318,7 @@ export interface ElementSelectInfo {
   typographyIntelligence?: TypographyIntelligence;
   colorIntelligence?: ColorIntelligence;
   spacingIntelligence?: SpacingIntelligence;
+  borderRadiusIntelligence?: BorderRadiusIntelligence;
 }
 
 export interface MessagePayloadMap {

@@ -85,6 +85,7 @@ export const SidePanel: React.FC = () => {
   const [showSvgMarkup, setShowSvgMarkup] = useState(false);
   const [tokenSystem, setTokenSystem] = useState<'semantic' | 'tailwind' | 'material'>('semantic');
   const [spacingHistory, setSpacingHistory] = useState<number[]>([]);
+  const [radiusHistory, setRadiusHistory] = useState<string[]>([]);
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -169,6 +170,11 @@ export const SidePanel: React.FC = () => {
           const newVals = items.map((it: any) => it.valuePx);
           setSpacingHistory((prev) => [...prev, ...newVals]);
         }
+        const bri = message.payload.borderRadiusIntelligence;
+        if (bri) {
+          const newRads = [bri.raw.topLeft, bri.raw.topRight, bri.raw.bottomRight, bri.raw.bottomLeft].filter(r => r !== '0px' && r !== '0');
+          setRadiusHistory((prev) => [...prev, ...newRads]);
+        }
         sendResponse({ ack: true });
         return false;
       }
@@ -179,6 +185,11 @@ export const SidePanel: React.FC = () => {
         if (items.length > 0) {
           const newVals = items.map((it: any) => it.valuePx);
           setSpacingHistory((prev) => [...prev, ...newVals]);
+        }
+        const bri = message.payload.borderRadiusIntelligence;
+        if (bri) {
+          const newRads = [bri.raw.topLeft, bri.raw.topRight, bri.raw.bottomRight, bri.raw.bottomLeft].filter(r => r !== '0px' && r !== '0');
+          setRadiusHistory((prev) => [...prev, ...newRads]);
         }
         addDevLog('in', 'SELECT', `Element selected: ${message.payload.tagName}${message.payload.id}`);
         sendResponse({ ack: true });
@@ -2591,6 +2602,144 @@ export const SidePanel: React.FC = () => {
                   {/* Feedback Guidance */}
                   <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic pt-1">
                     {si.gridFeedback}
+                  </p>
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 15: Border Radius Intelligence */}
+          <InspectorCard
+            title="Border Radius Intelligence"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="18" height="18" rx="4" />
+              </svg>
+            }
+            emptyMessage={!activeElement ? "No active element selected to analyze border-radius." : "Computing border-radius intelligence..."}
+            isEmpty={!activeElement || !activeElement.borderRadiusIntelligence}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Border Radius Intelligence</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.borderRadiusIntelligence && (() => {
+              const bri = activeElement.borderRadiusIntelligence;
+
+              // Calculate dynamic consistency score
+              const currentRads = [bri.raw.topLeft, bri.raw.topRight, bri.raw.bottomRight, bri.raw.bottomLeft].filter(r => r !== '0px' && r !== '0');
+              let consistencyVal = 100;
+              if (radiusHistory.length > 0 && currentRads.length > 0) {
+                let matched = 0;
+                currentRads.forEach((rad) => {
+                  if (radiusHistory.includes(rad)) {
+                    matched++;
+                  }
+                });
+                consistencyVal = Math.round((matched / currentRads.length) * 100);
+              }
+
+              return (
+                <div className="space-y-3.5 font-mono text-[10px]">
+                  {/* Style Preview & Classification */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[9px]">
+                      <span className="text-zinc-500 font-bold uppercase tracking-wider">Classification</span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-blue-950/60 border border-blue-900/60 text-blue-400 font-mono">
+                        {bri.classification}
+                      </span>
+                    </div>
+
+                    {/* Preview Box */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[100px] flex items-center justify-center p-4 relative shadow-inner">
+                      <div 
+                        className="w-16 h-16 bg-gradient-to-tr from-cyan-500/10 to-purple-500/10 border-2 border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.15)] transition-all duration-300"
+                        style={{
+                          borderTopLeftRadius: bri.raw.topLeft,
+                          borderTopRightRadius: bri.raw.topRight,
+                          borderBottomRightRadius: bri.raw.bottomRight,
+                          borderBottomLeftRadius: bri.raw.bottomLeft
+                        }}
+                      />
+                      <div className="absolute top-1 left-2 text-[7px] text-zinc-600 uppercase font-bold">Top-Left</div>
+                      <div className="absolute top-1 right-2 text-[7px] text-zinc-600 uppercase font-bold text-right">Top-Right</div>
+                      <div className="absolute bottom-1 left-2 text-[7px] text-zinc-600 uppercase font-bold">Bottom-Left</div>
+                      <div className="absolute bottom-1 right-2 text-[7px] text-zinc-600 uppercase font-bold text-right">Bottom-Right</div>
+                    </div>
+                  </div>
+
+                  {/* Metrics Row */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Compliance */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Grid Scale Alignment</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-[11px] font-bold text-white">{bri.gridCompliance ? 'Standard (2px/4px)' : 'Non-Standard'}</span>
+                        <span className={`text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                          bri.gridCompliance ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' : 'bg-amber-950/60 border border-amber-900/40 text-amber-400'
+                        }`}>
+                          {bri.gridCompliance ? 'Pass' : 'Audit'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Consistency */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Radius Consistency</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-white">{consistencyVal}%</span>
+                        <span className={`text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                          consistencyVal >= 90 ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
+                          consistencyVal >= 60 ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                          'bg-amber-950/60 border border-amber-900/40 text-amber-400'
+                        }`}>
+                          {consistencyVal >= 90 ? 'High' :
+                           consistencyVal >= 60 ? 'Moderate' : 'Fluid'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Corners List */}
+                  <div className="space-y-1.5 pt-0.5">
+                    <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider block">Individual Corners</span>
+                    <div className="grid grid-cols-2 gap-2 text-zinc-500">
+                      {[
+                        { label: 'Top Left', value: bri.raw.topLeft, token: bri.corners.topLeft },
+                        { label: 'Top Right', value: bri.raw.topRight, token: bri.corners.topRight },
+                        { label: 'Bottom Left', value: bri.raw.bottomLeft, token: bri.corners.bottomLeft },
+                        { label: 'Bottom Right', value: bri.raw.bottomRight, token: bri.corners.bottomRight }
+                      ].map((item, idx) => (
+                        <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-0.5 text-[9px]">
+                          <span className="text-zinc-600 text-[7.5px] uppercase font-bold">{item.label}</span>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-zinc-200 font-semibold truncate max-w-[45px]">{item.value}</span>
+                              <span className={`text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                                item.token === 'Sharp' ? 'bg-zinc-950 border border-zinc-900 text-zinc-500' :
+                                item.token === 'Small' ? 'bg-blue-950/40 border border-blue-900/40 text-blue-400' :
+                                item.token === 'Medium' ? 'bg-cyan-950/40 border border-cyan-900/40 text-cyan-400' :
+                                item.token === 'Large' ? 'bg-purple-950/40 border border-purple-900/40 text-purple-400' :
+                                'bg-emerald-950/40 border border-emerald-900/40 text-emerald-400'
+                              }`}>
+                                {item.token}
+                              </span>
+                            </div>
+                            <CopyButton value={item.value} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Feedback Guidance */}
+                  <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic pt-1">
+                    {bri.classification === 'Sharp' ? 'Zero rounding. Provides high precision and structural contrast.' :
+                     bri.classification === 'Mixed' ? 'Asymmetric rounding is optimized for layout attachments or tab styling.' :
+                     bri.classification === 'Circle' ? 'Circular clipping creates visual focal points, ideal for avatars.' :
+                     bri.classification === 'Pill' ? 'High pill-rounding delivers soft visual flow, standard for badges.' :
+                     'Standard rounded corners matching brand system scales.'}
                   </p>
                 </div>
               );
