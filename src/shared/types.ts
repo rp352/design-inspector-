@@ -53,6 +53,19 @@ export interface LayoutExtractionData {
   flexGrid: FlexGridData;
 }
 
+export interface ImageDetails {
+  src: string;
+  srcset?: string;
+  width: number;
+  height: number;
+  naturalWidth: number;
+  naturalHeight: number;
+  loading: string;
+  decoding: string;
+  alt: string;
+  extension: string;
+}
+
 export interface AssetData {
   type: 'image' | 'svg-inline' | 'svg-external' | 'background-image' | 'video' | 'canvas' | 'lottie' | 'icon' | 'unknown';
   url?: string;
@@ -60,6 +73,7 @@ export interface AssetData {
   mimeType?: string;
   dimensions?: { width: number; height: number };
   svgContent?: string;
+  imageDetails?: ImageDetails;
 }
 
 export interface ElementHoverInfo {

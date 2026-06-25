@@ -878,6 +878,121 @@ export const SidePanel: React.FC = () => {
                 }
               };
 
+              const imageDetails = asset.imageDetails;
+              if (imageDetails) {
+                const getExtensionBadgeClass = (ext: string) => {
+                  switch (ext.toUpperCase()) {
+                    case 'PNG': return 'bg-cyan-950 border-cyan-800 text-cyan-400';
+                    case 'JPEG': return 'bg-amber-950 border-amber-800 text-amber-400';
+                    case 'WEBP': return 'bg-emerald-950 border-emerald-800 text-emerald-400';
+                    case 'AVIF': return 'bg-indigo-950 border-indigo-800 text-indigo-400';
+                    case 'GIF': return 'bg-pink-950 border-pink-800 text-pink-400';
+                    case 'SVG': return 'bg-teal-950 border-teal-800 text-teal-400';
+                    default: return 'bg-zinc-950 border-zinc-800 text-zinc-400';
+                  }
+                };
+
+                return (
+                  <div className="space-y-3">
+                    {/* Live Checkerboard Preview Container */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[120px] flex items-center justify-center overflow-hidden checkerboard-bg p-2 relative shadow-inner">
+                      {imageDetails.src ? (
+                        <img 
+                          src={imageDetails.src} 
+                          alt={imageDetails.alt || 'Asset preview'} 
+                          className="max-h-full max-w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                    </div>
+
+                    {/* Metadata fields */}
+                    <div className="space-y-2 text-[10px] font-mono border-t border-[#1f1f23]/60 pt-2.5">
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span className="text-zinc-600">Asset Type</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${getExtensionBadgeClass(imageDetails.extension)}`}>
+                            {imageDetails.extension}
+                          </span>
+                          <span className="text-zinc-500 text-[9px] uppercase font-bold">Image</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span className="text-zinc-600">Resolution</span>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-zinc-200 font-semibold">
+                            {imageDetails.width} × {imageDetails.height} px <span className="text-zinc-500 text-[8.5px] font-normal">(Display)</span>
+                          </span>
+                          <span className="text-[#00f0ff] font-semibold">
+                            {imageDetails.naturalWidth} × {imageDetails.naturalHeight} px <span className="text-zinc-500 text-[8.5px] font-normal">(Intrinsic)</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span className="text-zinc-600">Strategies</span>
+                        <div className="flex gap-1.5">
+                          <span className="text-[9px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded">
+                            loading: <span className="text-[#00f0ff] font-semibold">{imageDetails.loading}</span>
+                          </span>
+                          <span className="text-[9px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.2 rounded">
+                            decoding: <span className="text-[#00f0ff] font-semibold">{imageDetails.decoding}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Alt text field */}
+                      <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-[#1f1f23]/40">
+                        <span className="text-zinc-600">Alt Text</span>
+                        <span className={`text-[9.5px] font-sans px-2.5 py-1 rounded bg-[#070708] border border-[#1f1f23]/60 leading-normal ${imageDetails.alt ? 'text-zinc-200' : 'text-zinc-600 italic'}`}>
+                          {imageDetails.alt || 'none'}
+                        </span>
+                      </div>
+
+                      {/* Srcset field if available */}
+                      {imageDetails.srcset && (
+                        <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-[#1f1f23]/40">
+                          <span className="text-zinc-600">Srcset</span>
+                          <div className="flex items-center justify-between bg-[#070708] border border-[#1f1f23]/60 rounded px-2.5 py-1">
+                            <span className="text-zinc-400 truncate text-[9px] font-semibold max-w-[170px]" title={imageDetails.srcset}>
+                              {imageDetails.srcset}
+                            </span>
+                            <CopyButton value={imageDetails.srcset} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Copy URL and Open in New Tab Row */}
+                      <div className="flex items-center gap-2 pt-2.5 border-t border-[#1f1f23]/60">
+                        <div className="flex-1 flex items-center justify-between bg-[#070708] px-2.5 py-0.5 rounded border border-[#1f1f23]/60 overflow-hidden">
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-zinc-600 text-[8px] uppercase font-bold tracking-wider leading-none mb-0.5">Asset URL</span>
+                            <span className="text-zinc-400 truncate text-[9.5px] font-semibold max-w-[130px]" title={imageDetails.src}>
+                              {imageDetails.src}
+                            </span>
+                          </div>
+                          <CopyButton value={imageDetails.src} />
+                        </div>
+                        <button
+                          onClick={() => window.open(imageDetails.src, '_blank')}
+                          className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[9.5px] font-bold px-3 py-1.5 rounded flex items-center gap-1.5 cursor-pointer transition-all shrink-0 uppercase tracking-wider"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                          <span>Open</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div className="space-y-3">
                   {/* Live Checkerboard Preview Container */}

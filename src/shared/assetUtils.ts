@@ -111,17 +111,60 @@ export function detectElementAsset(el: HTMLElement): AssetData {
     };
   }
   
+/**
+ * Detects the image file format extension.
+ */
+function detectExtension(url: string): string {
+  if (!url) return 'UNKNOWN';
+  if (url.startsWith('data:')) {
+    const match = url.match(/^data:image\/([^;]+);/i);
+    if (match) {
+      const mimeSub = match[1].toLowerCase();
+      if (mimeSub === 'jpeg' || mimeSub === 'jpg') return 'JPEG';
+      if (mimeSub === 'svg+xml') return 'SVG';
+      return mimeSub.toUpperCase();
+    }
+    return 'UNKNOWN';
+  }
+  
+  const ext = url.split(/[?#]/)[0].split('.').pop()?.toLowerCase();
+  if (!ext) return 'UNKNOWN';
+  
+  if (ext === 'jpg' || ext === 'jpeg') return 'JPEG';
+  if (ext === 'png') return 'PNG';
+  if (ext === 'webp') return 'WEBP';
+  if (ext === 'avif') return 'AVIF';
+  if (ext === 'gif') return 'GIF';
+  if (ext === 'svg') return 'SVG';
+  
+  return ext.toUpperCase();
+}
+
   // 6. Check for Image (Img tag)
   if (tagName === 'img') {
     const imgEl = el as HTMLImageElement;
     const url = imgEl.src || '';
     const isSvg = url.split(/[?#]/)[0].toLowerCase().endsWith('.svg') || url.startsWith('data:image/svg+xml');
+    const extension = detectExtension(url);
+    
     return {
       type: isSvg ? 'svg-external' : 'image',
       url: url || undefined,
       isInline: url.startsWith('data:'),
       mimeType: getMimeType(url, 'img'),
-      dimensions
+      dimensions,
+      imageDetails: {
+        src: url,
+        srcset: imgEl.getAttribute('srcset') || undefined,
+        width: dimensions.width,
+        height: dimensions.height,
+        naturalWidth: imgEl.naturalWidth,
+        naturalHeight: imgEl.naturalHeight,
+        loading: imgEl.getAttribute('loading') || 'eager',
+        decoding: imgEl.getAttribute('decoding') || 'auto',
+        alt: imgEl.getAttribute('alt') || '',
+        extension
+      }
     };
   }
   
