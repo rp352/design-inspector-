@@ -6,7 +6,7 @@ import { identifyFont } from '../shared/fontUtils';
 import { generateJSONReport, generateCleanCSS, generateTailwindSummary } from '../shared/exportUtils';
 import { inferDesignTokens } from '../shared/tokenInference';
 import { listenForMessages, sendMessageToBackground, sendMessageToTab } from '../shared/messaging';
-import type { TabInfo, ElementHoverInfo, ElementSelectInfo } from '../shared/types';
+import type { TabInfo, ElementHoverInfo, ElementSelectInfo, ParsedShadow } from '../shared/types';
 
 interface DevLogEntry {
   id: string;
@@ -86,6 +86,7 @@ export const SidePanel: React.FC = () => {
   const [tokenSystem, setTokenSystem] = useState<'semantic' | 'tailwind' | 'material'>('semantic');
   const [spacingHistory, setSpacingHistory] = useState<number[]>([]);
   const [radiusHistory, setRadiusHistory] = useState<string[]>([]);
+  const [inspectedElements, setInspectedElements] = useState<ElementSelectInfo[]>([]);
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -142,6 +143,7 @@ export const SidePanel: React.FC = () => {
         setHoveredElement(null);
         setSelectedElement(null);
         setShowSvgMarkup(false);
+        setInspectedElements([]);
         setStatus('ready');
         setStatusText('Tab navigated.');
         setDetectedStack(['MV3']);
@@ -191,6 +193,18 @@ export const SidePanel: React.FC = () => {
           const newRads = [bri.raw.topLeft, bri.raw.topRight, bri.raw.bottomRight, bri.raw.bottomLeft].filter(r => r !== '0px' && r !== '0');
           setRadiusHistory((prev) => [...prev, ...newRads]);
         }
+        setInspectedElements((prev) => {
+          const isDuplicate = prev.some(
+            (el) =>
+              el.tagName === message.payload.tagName &&
+              el.id === message.payload.id &&
+              el.className === message.payload.className &&
+              el.rect.x === message.payload.rect.x &&
+              el.rect.y === message.payload.rect.y
+          );
+          if (isDuplicate) return prev;
+          return [...prev, message.payload];
+        });
         addDevLog('in', 'SELECT', `Element selected: ${message.payload.tagName}${message.payload.id}`);
         sendResponse({ ack: true });
         return false;
@@ -290,6 +304,380 @@ export const SidePanel: React.FC = () => {
   // Determine element values to render (selection takes priority over hover)
   const activeElement = selectedElement || hoveredElement;
 
+  // Design System Analyzer statistical inference helpers
+  const hexToHsl = (hex: string) => {
+    hex = hex.replace(/^#/, '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100)
+    };
+  };
+
+  const inferSemanticName = (hex: string, role: string) => {
+    const upperHex = hex.toUpperCase().trim();
+    if (upperHex === '#2563EB') return 'Primary';
+    if (upperHex === '#DC2626') return 'Danger';
+    if (upperHex === '#16A34A') return 'Success';
+    if (upperHex === '#F8FAFC') return 'Surface';
+    if (upperHex === '#0F172A') return 'Text Primary';
+
+    const { h, s, l } = hexToHsl(hex);
+
+    if (role === 'Text') {
+      if (l < 25) return 'Text Primary';
+      if (l > 75) return 'Text Inverse';
+      return 'Text Secondary';
+    }
+    if (role === 'Background') {
+      if (l > 93) return 'Surface';
+      if (l < 15) return 'Surface (Dark)';
+      if (h >= 195 && h <= 245 && s > 40) return 'Primary/Bg';
+      return 'Surface/Muted';
+    }
+    
+    if (h >= 190 && h <= 250 && s > 30) {
+      return 'Primary';
+    }
+    if ((h >= 345 || h <= 15) && s > 30) {
+      return 'Danger';
+    }
+    if (h >= 80 && h <= 145 && s > 30) {
+      return 'Success';
+    }
+    if (h >= 16 && h <= 60 && s > 30) {
+      return 'Warning';
+    }
+    
+    return role;
+  };
+
+  const parseColorToRgb = (colorStr: string) => {
+    if (!colorStr) return null;
+    const rgbMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgbMatch) {
+      return {
+        r: parseInt(rgbMatch[1]),
+        g: parseInt(rgbMatch[2]),
+        b: parseInt(rgbMatch[3])
+      };
+    }
+    let hex = colorStr.replace(/^#/, '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length === 6) {
+      return {
+        r: parseInt(hex.substring(0, 2), 16),
+        g: parseInt(hex.substring(2, 4), 16),
+        b: parseInt(hex.substring(4, 6), 16)
+      };
+    }
+    return null;
+  };
+
+  const getLuminance = (r: number, g: number, b: number) => {
+    const a = [r, g, b].map((v) => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+  };
+
+  const calculateContrastRatio = (fg: string, bg: string) => {
+    const rgb1 = parseColorToRgb(fg);
+    const rgb2 = parseColorToRgb(bg);
+    if (!rgb1 || !rgb2) return 1;
+    const l1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+    const l2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+    const brightest = Math.max(l1, l2);
+    const darkest = Math.min(l1, l2);
+    return (brightest + 0.05) / (darkest + 0.05);
+  };
+
+  const getPrimaryFont = () => {
+    if (inspectedElements.length === 0) return { fontName: '—', source: '—' };
+    const counts: Record<string, number> = {};
+    const fontDetails: Record<string, string> = {};
+    
+    inspectedElements.forEach((el) => {
+      const rawFam = el.typography?.fontFamily;
+      if (rawFam) {
+        const { fontName, source } = identifyFont(rawFam);
+        counts[fontName] = (counts[fontName] || 0) + 1;
+        fontDetails[fontName] = source;
+      }
+    });
+
+    let maxFont = '—';
+    let maxCount = 0;
+    for (const font in counts) {
+      if (counts[font] > maxCount) {
+        maxCount = counts[font];
+        maxFont = font;
+      }
+    }
+
+    return {
+      fontName: maxFont,
+      source: fontDetails[maxFont] || '—'
+    };
+  };
+
+  const getTopColors = () => {
+    if (inspectedElements.length === 0) return [];
+    const colorCounts: Record<string, { count: number; roles: Record<string, number>; rgb: string }> = {};
+
+    inspectedElements.forEach((el) => {
+      const cols = el.colors;
+      if (!cols) return;
+
+      const addColor = (info: any, role: string) => {
+        if (info && !info.isTransparent && info.hex && info.hex !== 'transparent') {
+          const hex = info.hex.toUpperCase();
+          if (!colorCounts[hex]) {
+            colorCounts[hex] = { count: 0, roles: {}, rgb: info.rgb };
+          }
+          colorCounts[hex].count++;
+          colorCounts[hex].roles[role] = (colorCounts[hex].roles[role] || 0) + 1;
+        }
+      };
+
+      addColor(cols.background, 'Background');
+      addColor(cols.text, 'Text');
+      addColor(cols.border, 'Border');
+      if (cols.shadows && Array.isArray(cols.shadows)) {
+        cols.shadows.forEach((sh) => addColor(sh, 'Shadow'));
+      }
+    });
+
+    const sortedColors = Object.entries(colorCounts)
+      .map(([hex, data]) => {
+        let topRole = 'Unknown';
+        let maxRoleCount = 0;
+        Object.entries(data.roles).forEach(([role, count]) => {
+          if (count > maxRoleCount) {
+            maxRoleCount = count;
+            topRole = role;
+          }
+        });
+
+        const token = inferSemanticName(hex, topRole);
+        return {
+          hex,
+          rgb: data.rgb,
+          count: data.count,
+          role: topRole,
+          token
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    const top5 = sortedColors.slice(0, 5);
+
+    const primaryBg = top5.find(c => c.role === 'Background')?.rgb || '#FFFFFF';
+    const primaryText = top5.find(c => c.role === 'Text')?.rgb || '#09090B';
+
+    return top5.map((c) => {
+      let contrast = '—';
+      let compliance = 'N/A';
+
+      if (c.role === 'Text') {
+        const ratio = calculateContrastRatio(c.rgb, primaryBg);
+        contrast = ratio.toFixed(1);
+        compliance = ratio >= 7.0 ? 'AAA' : ratio >= 4.5 ? 'AA' : 'Fail';
+      } else if (c.role === 'Background') {
+        const ratio = calculateContrastRatio(primaryText, c.rgb);
+        contrast = ratio.toFixed(1);
+        compliance = ratio >= 7.0 ? 'AAA' : ratio >= 4.5 ? 'AA' : 'Fail';
+      } else {
+        const ratio = calculateContrastRatio(c.rgb, primaryBg);
+        contrast = ratio.toFixed(1);
+        compliance = ratio >= 3.0 ? 'Pass' : 'Low';
+      }
+
+      return {
+        ...c,
+        contrast,
+        compliance
+      };
+    });
+  };
+
+  const getSpacingTokenName = (px: number) => {
+    if (px % 4 === 0) {
+      return `Space ${px / 4}`;
+    }
+    return `Space ${(px / 4).toFixed(1)}`;
+  };
+
+  const getTopSpacing = () => {
+    const allSpacingItems = inspectedElements.flatMap(el => el.spacingIntelligence?.spacingItems || []);
+    const allSpacingValues = allSpacingItems.map(item => item.valuePx).filter(v => v > 0);
+
+    if (allSpacingValues.length === 0) return { scale: [], consistency: 100, is8ptGrid: '—', compliance8pt: 0 };
+
+    const counts: Record<number, number> = {};
+    allSpacingValues.forEach((val) => {
+      counts[val] = (counts[val] || 0) + 1;
+    });
+
+    const sortedSpacing = Object.entries(counts)
+      .map(([valStr, count]) => {
+        const val = parseInt(valStr);
+        return {
+          valuePx: val,
+          count,
+          tokenName: getSpacingTokenName(val)
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    const scale = sortedSpacing.slice(0, 5);
+    const topValues = scale.map(s => s.valuePx);
+
+    const consistentCount = allSpacingValues.filter(v => topValues.includes(v)).length;
+    const consistency = Math.round((consistentCount / allSpacingValues.length) * 100);
+
+    const divisibleBy8Count = allSpacingValues.filter(v => v % 8 === 0).length;
+    const compliance8pt = Math.round((divisibleBy8Count / allSpacingValues.length) * 100);
+
+    let is8ptGrid = 'Custom';
+    if (compliance8pt >= 90) is8ptGrid = 'Strict';
+    else if (compliance8pt >= 60) is8ptGrid = 'Mostly';
+
+    return {
+      scale,
+      consistency,
+      is8ptGrid,
+      compliance8pt
+    };
+  };
+
+  const getRadiusTokenName = (valStr: string) => {
+    const px = parseFloat(valStr);
+    if (isNaN(px) || px <= 0) return 'Sharp';
+    if (valStr.includes('%') || px >= 9999) return 'Circle';
+    if (px <= 3) return 'Small';
+    if (px <= 6) return 'Medium';
+    if (px <= 12) return 'Large';
+    if (px <= 32) return 'Pill';
+    return 'Circle';
+  };
+
+  const getTopRadii = () => {
+    const allRadii = inspectedElements.flatMap(el => {
+      const bri = el.borderRadiusIntelligence;
+      return bri ? [bri.raw.topLeft, bri.raw.topRight, bri.raw.bottomRight, bri.raw.bottomLeft] : [];
+    }).filter(r => r !== '0px' && r !== '0' && r !== '');
+
+    if (allRadii.length === 0) return { scale: [], consistency: 100 };
+
+    const counts: Record<string, number> = {};
+    allRadii.forEach((val) => {
+      counts[val] = (counts[val] || 0) + 1;
+    });
+
+    const sortedRadii = Object.entries(counts)
+      .map(([val, count]) => {
+        return {
+          value: val,
+          count,
+          tokenName: getRadiusTokenName(val)
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    const scale = sortedRadii.slice(0, 5);
+    const topValues = scale.map(s => s.value);
+
+    const consistentCount = allRadii.filter(r => topValues.includes(r)).length;
+    const consistency = Math.round((consistentCount / allRadii.length) * 100);
+
+    return {
+      scale,
+      consistency
+    };
+  };
+
+  const getTopShadows = () => {
+    const allShadows = inspectedElements.flatMap(el => [
+      ...(el.effects?.boxShadows || []),
+      ...(el.effects?.dropShadows || [])
+    ]);
+
+    if (allShadows.length === 0) return { scale: [], consistency: 100, avgElevation: '0.0', glassCount: 0 };
+
+    const counts: Record<string, { count: number; shadow: ParsedShadow }> = {};
+    allShadows.forEach((sh) => {
+      if (!counts[sh.raw]) {
+        counts[sh.raw] = { count: 0, shadow: sh };
+      }
+      counts[sh.raw].count++;
+    });
+
+    const sortedShadows = Object.values(counts)
+      .sort((a, b) => b.count - a.count);
+
+    const scale = sortedShadows.slice(0, 3).map((item) => {
+      const sh = item.shadow;
+      const blur = parseFloat(sh.blurRadius) || 0;
+      
+      let classification = 'Medium';
+      if (sh.inset) classification = 'Inset';
+      else if (blur <= 2) classification = 'Sharp';
+      else if (blur <= 6) classification = 'Small';
+      else if (blur > 16) classification = 'Large';
+
+      return {
+        raw: sh.raw,
+        count: item.count,
+        classification,
+        shadow: sh
+      };
+    });
+
+    const topRawValues = scale.map(s => s.raw);
+    const consistentCount = allShadows.filter(s => topRawValues.includes(s.raw)).length;
+    const consistency = Math.round((consistentCount / allShadows.length) * 100);
+
+    const elementsWithShadowIntelligence = inspectedElements.filter(el => el.shadowIntelligence);
+    const totalElevation = elementsWithShadowIntelligence.reduce((sum, el) => sum + (el.shadowIntelligence?.elevationLevel || 0), 0);
+    const avgElevation = elementsWithShadowIntelligence.length > 0 ? (totalElevation / elementsWithShadowIntelligence.length).toFixed(1) : '0.0';
+
+    const glassCount = inspectedElements.filter(el => el.shadowIntelligence?.hasGlassEffect).length;
+
+    return {
+      scale,
+      consistency,
+      avgElevation,
+      glassCount
+    };
+  };
 
   return (
     <div className="flex flex-col h-full bg-[#09090b] text-[#fafafa] font-sans antialiased select-none">
@@ -2874,6 +3262,240 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 17: Design System Summary */}
+          {inspectedElements.length > 0 && (() => {
+            const font = getPrimaryFont();
+            const colors = getTopColors();
+            const spacing = getTopSpacing();
+            const radii = getTopRadii();
+            const shadows = getTopShadows();
+
+            return (
+              <InspectorCard
+                title="Design System Summary"
+                icon={
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                }
+                emptyMessage="No elements analyzed in this session. Start by inspecting elements."
+                isEmpty={false}
+              >
+                <div className="space-y-4 font-mono text-[10px]">
+                  {/* Dashboard Header */}
+                  <div className="flex items-center justify-between border-b border-[#1f1f23]/60 pb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider">Analyzed session pool</span>
+                      <span className="text-zinc-200 font-bold text-[11px] font-sans">
+                        {inspectedElements.length} {inspectedElements.length === 1 ? 'element' : 'elements'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setInspectedElements([])}
+                      className="text-[8px] bg-red-950/20 border border-red-900/30 hover:bg-red-950/40 hover:border-red-500/50 text-red-400 font-bold px-2 py-0.5 rounded uppercase tracking-wider transition-all cursor-pointer"
+                    >
+                      Clear Pool
+                    </button>
+                  </div>
+
+                  {/* Typography Subsection */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">1. Typography Scale</span>
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-600">Primary Font</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[#00f0ff] font-sans font-bold">{font.fontName}</span>
+                          <CopyButton value={font.fontName} />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[8.5px]">
+                        <span className="text-zinc-600">Font Category</span>
+                        <span className={`px-1.5 py-0.2 rounded uppercase font-bold text-[7.5px] border ${
+                          font.source === 'Google Fonts' ? 'bg-[#064e3b]/80 border-[#059669]/50 text-[#34d399]' :
+                          font.source === 'System Font' ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa]' :
+                          'bg-[#78350f]/80 border-[#d97706]/50 text-[#fbbf24]'
+                        }`}>
+                          {font.source}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Colors Subsection */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">2. Inferred Color Palette</span>
+                    <div className="space-y-1.5">
+                      {colors.length === 0 ? (
+                        <div className="text-zinc-600 text-center py-2 italic text-[8.5px]">No colors identified.</div>
+                      ) : (
+                        colors.map((c, idx) => (
+                          <div key={idx} className="flex flex-col gap-1.5 p-2 bg-[#050506] border border-[#1f1f23] rounded-md text-[9px]">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="relative w-3 h-3 rounded border border-zinc-800 overflow-hidden shrink-0 checkerboard-bg">
+                                  <div className="absolute inset-0" style={{ backgroundColor: c.rgb }} />
+                                </div>
+                                <span className="text-zinc-200 font-bold font-mono">{c.hex}</span>
+                                <span className="text-[7.5px] font-bold px-1 py-0.2 rounded bg-zinc-950 border border-zinc-900 text-zinc-400">
+                                  {c.token}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                                  c.compliance === 'AAA' ? 'bg-emerald-950 border border-emerald-900/60 text-emerald-400' :
+                                  c.compliance === 'AA' || c.compliance === 'Pass' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' :
+                                  c.compliance === 'Fail' ? 'bg-rose-950 border border-rose-900/60 text-rose-400' :
+                                  'bg-zinc-950 border border-zinc-800 text-zinc-500'
+                                }`}>
+                                  {c.role === 'Text' || c.role === 'Background' ? `WCAG: ${c.contrast} (${c.compliance})` : `${c.role} contrast: ${c.contrast}`}
+                                </span>
+                                <CopyButton value={c.hex} />
+                              </div>
+                            </div>
+                            <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                              Appears {c.count} {c.count === 1 ? 'time' : 'times'} (primarily as {c.role})
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Spacing Subsection */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">3. Spacing scale ({spacing.consistency}% consistency)</span>
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
+                      <div className="flex items-center justify-between text-[8.5px] border-b border-[#1f1f23]/60 pb-1.5">
+                        <span className="text-zinc-600">8pt Grid Compliance</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-zinc-200 font-bold">{spacing.compliance8pt}%</span>
+                          <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                            spacing.is8ptGrid === 'Strict' ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
+                            spacing.is8ptGrid === 'Mostly' ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                            'bg-rose-950/60 border border-rose-900/40 text-rose-400'
+                          }`}>
+                            {spacing.is8ptGrid}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-[7.5px] text-zinc-600 uppercase font-bold tracking-wider block">Top Spacing Rules</span>
+                        {spacing.scale.length === 0 ? (
+                          <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No spacing properties collected.</div>
+                        ) : (
+                          spacing.scale.map((item, idx) => {
+                            const pct = Math.min(100, Math.round((item.valuePx / 32) * 100));
+                            return (
+                              <div key={idx} className="space-y-1">
+                                <div className="flex justify-between text-zinc-400 text-[8.5px]">
+                                  <span className="font-semibold text-zinc-300">{item.tokenName}</span>
+                                  <span className="font-mono text-[#00f0ff] font-bold">{item.valuePx}px ({item.count} occurrences)</span>
+                                </div>
+                                <div className="h-1.5 w-full bg-zinc-950 border border-zinc-900/60 rounded overflow-hidden">
+                                  <div className="h-full bg-cyan-500/60" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Border Radius Subsection */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">4. Radius scale ({radii.consistency}% consistency)</span>
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2.5">
+                      {radii.scale.length === 0 ? (
+                        <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No border radius collected.</div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2 text-zinc-500">
+                          {radii.scale.map((item, idx) => (
+                            <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-1 text-[8.5px]">
+                              <span className="text-zinc-600 text-[7px] uppercase font-bold">Standard Size</span>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <div 
+                                    className="w-3.5 h-3.5 border border-zinc-700 bg-zinc-950 shrink-0" 
+                                    style={{ borderRadius: item.value }}
+                                  />
+                                  <span className="text-zinc-200 font-semibold">{item.value}</span>
+                                  <span className="text-[7px] font-bold px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                                    {item.tokenName}
+                                  </span>
+                                </div>
+                                <CopyButton value={item.value} />
+                              </div>
+                              <span className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                                {item.count} {item.count === 1 ? 'element' : 'elements'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Shadows Subsection */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">5. Shadow scale ({shadows.consistency}% consistency)</span>
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-[8.5px] border-b border-[#1f1f23]/60 pb-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Avg Elevation</span>
+                          <span className="text-zinc-200 font-bold text-[10px]">Level {shadows.avgElevation} / 5</span>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Glassmorphism</span>
+                          <span className="text-zinc-200 font-bold text-[10px]">
+                            {shadows.glassCount} {shadows.glassCount === 1 ? 'element' : 'elements'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {shadows.scale.length === 0 ? (
+                          <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No shadow properties collected.</div>
+                        ) : (
+                          shadows.scale.map((item, idx) => (
+                            <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2 space-y-1.5 text-[8.5px]">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[7px] font-bold px-1.5 py-0.2 rounded bg-purple-950 border border-purple-900 text-purple-400 uppercase">
+                                    {item.classification}
+                                  </span>
+                                  <span className="text-zinc-400 font-mono text-[7px] truncate max-w-[80px]" title={item.raw}>
+                                    {item.raw}
+                                  </span>
+                                </div>
+                                <CopyButton value={item.raw} />
+                              </div>
+                              
+                              <div className="py-2.5 flex items-center justify-center bg-[#070708] rounded border border-zinc-900/60 overflow-hidden">
+                                <div 
+                                  className="w-16 h-4 bg-[#0d0d10] border border-zinc-800 rounded flex items-center justify-center text-[6.5px] text-zinc-600 font-sans"
+                                  style={{ boxShadow: item.raw }}
+                                >
+                                  Preview
+                                </div>
+                              </div>
+
+                              <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                                Appears {item.count} {item.count === 1 ? 'time' : 'times'} in this session
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </InspectorCard>
+            );
+          })()}
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}
