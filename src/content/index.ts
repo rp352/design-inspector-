@@ -1,6 +1,7 @@
 import { listenForMessages, createMessage, sendMessageToBackground } from '../shared/messaging';
 import { extractElementColors } from '../shared/colorUtils';
 import { extractElementLayout } from '../shared/layoutUtils';
+import { detectElementAsset } from '../shared/assetUtils';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -260,6 +261,7 @@ function handleMouseMove(e: MouseEvent) {
   const typography = extractTypography(target);
   const colors = extractElementColors(target);
   const layout = extractElementLayout(target);
+  const asset = detectElementAsset(target);
   
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -283,7 +285,8 @@ function handleMouseMove(e: MouseEvent) {
       styles,
       typography,
       colors,
-      layout
+      layout,
+      asset
     },
     'content'
   ).catch((err) => {
@@ -328,6 +331,7 @@ function handleMouseClick(e: MouseEvent) {
   const typography = extractTypography(target);
   const colors = extractElementColors(target);
   const layout = extractElementLayout(target);
+  const asset = detectElementAsset(target);
   const textContent = target.textContent ? target.textContent.trim().substring(0, 150) : '';
 
   const tagName = target.tagName.toLowerCase();
@@ -353,7 +357,8 @@ function handleMouseClick(e: MouseEvent) {
       styles,
       typography,
       colors,
-      layout
+      layout,
+      asset
     },
     'content'
   ).catch((err) => {

@@ -261,10 +261,6 @@ export const SidePanel: React.FC = () => {
   // Determine element values to render (selection takes priority over hover)
   const activeElement = selectedElement || hoveredElement;
 
-  const isElementAsset = activeElement && 
-    (activeElement.tagName === 'img' || 
-     activeElement.tagName === 'svg' || 
-     activeElement.tagName === 'path');
 
   return (
     <div className="flex flex-col h-full bg-[#09090b] text-[#fafafa] font-sans antialiased select-none">
@@ -768,32 +764,182 @@ export const SidePanel: React.FC = () => {
             emptyMessage="No linked images, SVG geometries, or backgrounds located."
             isEmpty={!activeElement}
             placeholderChildren={
-              <div className="space-y-2 text-[10px] font-mono">
-                <div className="flex items-center justify-between text-zinc-500">
-                  <span className="text-zinc-600 truncate max-w-[120px]">logo.svg</span>
-                  <span className="text-zinc-400 font-semibold text-[8px] bg-zinc-900 border border-zinc-800 px-1 py-0.5 rounded">Vector (SVG)</span>
+              <div className="space-y-3">
+                {/* Mock Preview Frame */}
+                <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[100px] flex items-center justify-center overflow-hidden checkerboard-bg opacity-30 p-2">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-600">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </div>
+                <div className="space-y-1.5 text-[10px] font-mono border-t border-[#1f1f23]/60 pt-2.5">
+                  <div className="flex items-center justify-between text-zinc-500">
+                    <span className="text-zinc-600">Asset Type</span>
+                    <span className="text-[#a1a1aa] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider text-[8px] bg-[#18181b] border border-[#27272a]">
+                      unknown
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-zinc-500">
+                    <span className="text-zinc-600">Dimensions</span>
+                    <span className="text-zinc-400 font-semibold">0 × 0 px</span>
+                  </div>
                 </div>
               </div>
             }
           >
-            {activeElement && (
-              <div className="space-y-2 text-[10px] font-mono">
-                {isElementAsset ? (
-                  <div className="flex items-center justify-between text-zinc-500">
-                    <span className="text-zinc-200 truncate max-w-[140px]" title={activeElement.tagName}>
-                      {activeElement.tagName === 'img' ? 'embedded_image.png' : 'vector_shape.svg'}
-                    </span>
-                    <span className="text-zinc-400 font-semibold text-[8px] bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded uppercase tracking-wider">
-                      {activeElement.tagName === 'img' ? 'Image' : 'SVG Vector'}
-                    </span>
+            {activeElement && activeElement.asset && (() => {
+              const asset = activeElement.asset;
+              
+              const getAssetTypeLabel = (t: string) => {
+                switch (t) {
+                  case 'image': return 'Image';
+                  case 'svg-inline': return 'Inline SVG';
+                  case 'svg-external': return 'External SVG';
+                  case 'background-image': return 'Background Image';
+                  case 'video': return 'Video';
+                  case 'canvas': return 'HTML5 Canvas';
+                  case 'lottie': return 'Lottie Animation';
+                  case 'icon': return 'Icon Graphic';
+                  default: return 'Unknown';
+                }
+              };
+
+              // Preview renderer based on classification
+              const renderPreview = () => {
+                switch (asset.type) {
+                  case 'image':
+                  case 'svg-external':
+                  case 'background-image':
+                    return asset.url ? (
+                      <img 
+                        src={asset.url} 
+                        alt="Asset preview" 
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : null;
+                  case 'svg-inline':
+                    return asset.svgContent ? (
+                      <div 
+                        dangerouslySetInnerHTML={{ __html: asset.svgContent }}
+                        className="[&>svg]:max-h-full [&>svg]:max-w-full [&>svg]:w-auto [&>svg]:h-auto [&>svg]:object-contain flex items-center justify-center h-full w-full"
+                      />
+                    ) : null;
+                  case 'video':
+                    return asset.url ? (
+                      <video 
+                        src={asset.url} 
+                        muted 
+                        loop 
+                        autoPlay 
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : null;
+                  case 'canvas':
+                    return (
+                      <div className="flex flex-col items-center gap-1.5 text-zinc-500">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                        <span className="text-[8px] font-mono uppercase tracking-wider">Canvas Element</span>
+                      </div>
+                    );
+                  case 'lottie':
+                    return (
+                      <div className="flex flex-col items-center gap-1.5 text-rose-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        <span className="text-[8px] font-mono uppercase tracking-wider text-zinc-500">Lottie Animation</span>
+                      </div>
+                    );
+                  case 'icon':
+                    return (
+                      <div className="flex flex-col items-center gap-1.5 text-purple-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        </svg>
+                        <span className="text-[8px] font-mono uppercase tracking-wider text-zinc-500">Vector / Font Icon</span>
+                      </div>
+                    );
+                  default:
+                    return (
+                      <div className="flex flex-col items-center gap-1.5 text-zinc-600">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span className="text-[8px] font-mono uppercase tracking-wider">No Asset Loaded</span>
+                      </div>
+                    );
+                }
+              };
+
+              return (
+                <div className="space-y-3">
+                  {/* Live Checkerboard Preview Container */}
+                  <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[100px] flex items-center justify-center overflow-hidden checkerboard-bg p-2 relative shadow-inner">
+                    {renderPreview()}
                   </div>
-                ) : (
-                  <div className="text-[10px] text-zinc-600 italic leading-relaxed py-1">
-                    No image or vector graphics identified on this element.
+
+                  {/* Metadata fields */}
+                  <div className="space-y-1.5 text-[10px] font-mono border-t border-[#1f1f23]/60 pt-2.5">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Asset Type</span>
+                      <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                        asset.type.includes('svg') || asset.type === 'icon'
+                          ? 'bg-[#064e3b]/80 border border-[#059669]/50 text-[#34d399]'
+                          : asset.type === 'video'
+                          ? 'bg-[#0c4a6e]/80 border border-[#0284c7]/50 text-[#38bdf8]'
+                          : asset.type === 'canvas' || asset.type === 'lottie'
+                          ? 'bg-[#881337]/80 border border-[#e11d48]/50 text-[#fda4af]'
+                          : asset.type === 'image' || asset.type === 'background-image'
+                          ? 'bg-[#1e3a8a]/80 border border-[#3b82f6]/50 text-[#93c5fd]'
+                          : 'bg-[#18181b] border border-[#27272a] text-[#a1a1aa]'
+                      }`}>
+                        {getAssetTypeLabel(asset.type)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Dimensions</span>
+                      <span className="text-zinc-200 font-semibold">
+                        {asset.dimensions ? `${asset.dimensions.width} × ${asset.dimensions.height} px` : '—'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Source Mode</span>
+                      <span className="text-zinc-300 font-semibold">
+                        {asset.isInline ? 'Inline (Data / Code)' : 'External Resource'}
+                      </span>
+                    </div>
+
+                    {asset.mimeType && (
+                      <div className="flex items-center justify-between text-zinc-500">
+                        <span className="text-zinc-600">MIME Type</span>
+                        <span className="text-zinc-200 font-semibold">{asset.mimeType}</span>
+                      </div>
+                    )}
+
+                    {asset.url && (
+                      <div className="flex items-center justify-between text-zinc-500 pt-1">
+                        <span className="text-zinc-600">Asset URL</span>
+                        <div className="flex items-center gap-1.5 max-w-[150px] overflow-hidden">
+                          <span className="text-zinc-400 truncate text-[9.5px] font-semibold" title={asset.url}>
+                            {asset.url}
+                          </span>
+                          <CopyButton value={asset.url} />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </InspectorCard>
         </div>
 

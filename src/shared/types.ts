@@ -53,6 +53,15 @@ export interface LayoutExtractionData {
   flexGrid: FlexGridData;
 }
 
+export interface AssetData {
+  type: 'image' | 'svg-inline' | 'svg-external' | 'background-image' | 'video' | 'canvas' | 'lottie' | 'icon' | 'unknown';
+  url?: string;
+  isInline: boolean;
+  mimeType?: string;
+  dimensions?: { width: number; height: number };
+  svgContent?: string;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -67,6 +76,7 @@ export interface ElementHoverInfo {
   typography: TypographyData;
   colors: ColorExtractionData;
   layout: LayoutExtractionData;
+  asset: AssetData;
 }
 
 export interface TabInfo {
@@ -90,6 +100,7 @@ export interface ElementSelectInfo {
   typography: TypographyData;
   colors: ColorExtractionData;
   layout: LayoutExtractionData;
+  asset: AssetData;
 }
 
 export interface MessagePayloadMap {
