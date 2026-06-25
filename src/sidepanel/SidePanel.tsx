@@ -3,6 +3,7 @@ import { InspectorCard } from '../components/InspectorCard';
 import { CopyButton } from '../components/CopyButton';
 import { BoxModel } from '../components/BoxModel';
 import { identifyFont } from '../shared/fontUtils';
+import { generateJSONReport, generateCleanCSS, generateTailwindSummary } from '../shared/exportUtils';
 import { listenForMessages, sendMessageToBackground, sendMessageToTab } from '../shared/messaging';
 import type { TabInfo, ElementHoverInfo, ElementSelectInfo } from '../shared/types';
 
@@ -1962,6 +1963,126 @@ export const SidePanel: React.FC = () => {
                       </span>
                       <CopyButton value={br.raw} />
                     </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 10: Export Engine */}
+          <InspectorCard
+            title="Export Engine"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+              </svg>
+            }
+            emptyMessage="No active element selected to export."
+            isEmpty={!activeElement}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Export Report</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && (() => {
+              const handleCopyJSON = () => {
+                const report = generateJSONReport(activeElement, activeTab?.url || '');
+                navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+                addDevLog('system', 'EXPORT_JSON', 'JSON report copied to clipboard.');
+              };
+
+              const handleDownloadJSON = () => {
+                const report = generateJSONReport(activeElement, activeTab?.url || '');
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'design-inspector-export.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                addDevLog('system', 'DOWNLOAD_JSON', 'JSON report download triggered.');
+              };
+
+              const handleCopyCSS = () => {
+                const cssStr = generateCleanCSS(activeElement);
+                navigator.clipboard.writeText(cssStr);
+                addDevLog('system', 'EXPORT_CSS', 'Clean CSS rules copied to clipboard.');
+              };
+
+              const handleCopyTailwind = () => {
+                const twStr = generateTailwindSummary(activeElement);
+                navigator.clipboard.writeText(twStr);
+                addDevLog('system', 'EXPORT_TAILWIND', 'Tailwind-like classes copied to clipboard.');
+              };
+
+              const previewSnippet = {
+                meta: {
+                  url: activeTab?.url ? (activeTab.url.length > 25 ? activeTab.url.substring(0, 25) + '...' : activeTab.url) : 'unknown',
+                  timestamp: new Date().toISOString()
+                },
+                element: {
+                  tagName: activeElement.tagName,
+                  id: activeElement.id || undefined,
+                  className: activeElement.className || undefined
+                }
+              };
+
+              return (
+                <div className="space-y-3 font-mono text-[10px]">
+                  {/* Visual JSON snippet preview */}
+                  <div className="relative">
+                    <span className="text-zinc-600 text-[8px] uppercase font-bold tracking-wider block mb-1">Export Preview</span>
+                    <pre className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 font-mono text-[8.5px] text-zinc-400 overflow-x-auto whitespace-pre select-text leading-relaxed">
+                      <code>{JSON.stringify(previewSnippet, null, 2)}</code>
+                    </pre>
+                  </div>
+
+                  {/* Action buttons grid */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      onClick={handleCopyJSON}
+                      className="bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] hover:border-[#00f0ff]/30 text-zinc-300 hover:text-white transition-all rounded py-2 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-500">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                      <span>Copy JSON</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadJSON}
+                      className="bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] hover:border-[#00f0ff]/30 text-zinc-300 hover:text-white transition-all rounded py-2 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-500">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                      </svg>
+                      <span>Download JSON</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyCSS}
+                      className="bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] hover:border-[#a855f7]/30 text-zinc-300 hover:text-white transition-all rounded py-2 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-purple-400/80">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                      </svg>
+                      <span>Copy CSS</span>
+                    </button>
+
+                    <button
+                      onClick={handleCopyTailwind}
+                      className="bg-[#38bdf8]/5 hover:bg-[#38bdf8]/10 border border-[#38bdf8]/20 hover:border-[#38bdf8]/60 text-[#38bdf8] transition-all rounded py-2 px-2 text-[9px] font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.4)]"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[#38bdf8]">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+                        <path d="M12 6v12M6 12h12" />
+                      </svg>
+                      <span>Copy Tailwind</span>
+                    </button>
                   </div>
                 </div>
               );
