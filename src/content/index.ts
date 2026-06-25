@@ -6,6 +6,7 @@ import { resolveExternalSVG } from '../shared/svgUtils';
 import { extractBackgroundDetails } from '../shared/backgroundUtils';
 import { extractEffectDetails } from '../shared/effectUtils';
 import { inferDesignTokens } from '../shared/tokenInference';
+import { extractTypographyIntelligence } from '../shared/typographyIntelligence';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -286,6 +287,7 @@ function handleMouseMove(e: MouseEvent) {
   const background = extractBackgroundDetails(target);
   const effects = extractEffectDetails(target);
   const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
+  const typographyIntelligence = extractTypographyIntelligence(target);
   
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -313,7 +315,8 @@ function handleMouseMove(e: MouseEvent) {
       asset,
       background,
       effects,
-      tokens
+      tokens,
+      typographyIntelligence
     },
     'content'
   ).catch((err) => {
@@ -344,7 +347,8 @@ function handleMouseMove(e: MouseEvent) {
             asset,
             background,
             effects,
-            tokens
+            tokens,
+            typographyIntelligence
           },
           'content'
         ).catch(() => {});
@@ -394,6 +398,7 @@ function handleMouseClick(e: MouseEvent) {
   const background = extractBackgroundDetails(target);
   const effects = extractEffectDetails(target);
   const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
+  const typographyIntelligence = extractTypographyIntelligence(target);
 
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -422,7 +427,8 @@ function handleMouseClick(e: MouseEvent) {
       asset,
       background,
       effects,
-      tokens
+      tokens,
+      typographyIntelligence
     },
     'content'
   ).catch((err) => {
@@ -453,7 +459,8 @@ function handleMouseClick(e: MouseEvent) {
             asset,
             background,
             effects,
-            tokens
+            tokens,
+            typographyIntelligence
           },
           'content'
         ).catch(() => {});

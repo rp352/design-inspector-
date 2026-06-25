@@ -195,6 +195,22 @@ export interface DesignTokenReport {
   system: 'semantic' | 'tailwind' | 'material' | 'custom';
 }
 
+export interface TypographyIntelligence {
+  classification: 'Display' | 'Hero' | 'Heading XL' | 'Heading Large' | 'Heading Medium' | 'Body Large' | 'Body' | 'Body Small' | 'Caption' | 'Label' | 'Button' | 'Code' | 'Overline' | 'Unknown';
+  readingComfort: {
+    score: number;
+    level: 'Excellent' | 'Good' | 'Moderate' | 'Poor';
+    feedback: string;
+  };
+  accessibility: {
+    sizeCompliant: boolean;
+    contrastRatio: string;
+    contrastLevel: 'AAA Passed' | 'AA Passed' | 'Failed' | 'N/A';
+    feedback: string;
+  };
+  hierarchyLevel: number;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -213,6 +229,7 @@ export interface ElementHoverInfo {
   background?: BackgroundDetails;
   effects?: EffectDetails;
   tokens?: DesignTokenReport;
+  typographyIntelligence?: TypographyIntelligence;
 }
 
 export interface TabInfo {
@@ -240,6 +257,7 @@ export interface ElementSelectInfo {
   background?: BackgroundDetails;
   effects?: EffectDetails;
   tokens?: DesignTokenReport;
+  typographyIntelligence?: TypographyIntelligence;
 }
 
 export interface MessagePayloadMap {

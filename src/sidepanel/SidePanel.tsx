@@ -2167,6 +2167,175 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 12: Typography Intelligence */}
+          <InspectorCard
+            title="Typography Intelligence"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+              </svg>
+            }
+            emptyMessage={!activeElement ? "No active element selected to analyze typography." : "Computing typography intelligence..."}
+            isEmpty={!activeElement || !activeElement.typographyIntelligence}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Typography Intelligence</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.typographyIntelligence && (() => {
+              const ti = activeElement.typographyIntelligence;
+              const textContent = selectedElement?.textContent || '';
+              return (
+                <div className="space-y-3.5 font-mono text-[10px]">
+                  {/* Style Preview & Classification */}
+                  <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-3 flex flex-col gap-2 relative overflow-hidden">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider">Classification</span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-blue-950/60 border border-blue-900/60 text-blue-400 font-mono">
+                        {ti.classification}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-center py-4 bg-[#0a0a0c] rounded border border-[#1f1f23]/40 font-sans">
+                      <span 
+                        className="text-center truncate px-3"
+                        style={{
+                          fontFamily: activeElement.styles.fontFamily || 'inherit',
+                          fontWeight: activeElement.styles.fontWeight || 'normal',
+                          fontSize: '18px',
+                          color: activeElement.styles.color || '#fafafa',
+                          lineHeight: '1.2',
+                          letterSpacing: activeElement.styles.letterSpacing || 'normal',
+                        }}
+                      >
+                        {textContent ? (textContent.length > 25 ? textContent.substring(0, 25) + '...' : textContent) : 'Aa Preview'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[8px] text-zinc-500 mt-0.5 pt-1.5 border-t border-[#1f1f23]/40">
+                      <span>Size: <strong className="text-zinc-300 font-semibold">{activeElement.styles.fontSize}</strong></span>
+                      <span>Line-Height: <strong className="text-zinc-300 font-semibold">{activeElement.styles.lineHeight}</strong></span>
+                      <span>Weight: <strong className="text-zinc-300 font-semibold">{activeElement.styles.fontWeight}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Reading Comfort Progress Meter */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex justify-between items-center text-[9px]">
+                      <span className="text-zinc-500 font-bold uppercase tracking-wider">Reading Comfort</span>
+                      <span className={`font-bold ${
+                        ti.readingComfort.level === 'Excellent' || ti.readingComfort.level === 'Good' ? 'text-emerald-400' :
+                        ti.readingComfort.level === 'Moderate' ? 'text-amber-400' : 'text-rose-400'
+                      }`}>
+                        {ti.readingComfort.level} ({ti.readingComfort.score}%)
+                      </span>
+                    </div>
+                    
+                    <div className="h-1.5 w-full bg-zinc-950 border border-zinc-900 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          ti.readingComfort.level === 'Excellent' || ti.readingComfort.level === 'Good' ? 'bg-emerald-500' :
+                          ti.readingComfort.level === 'Moderate' ? 'bg-amber-500' : 'bg-rose-500'
+                        }`}
+                        style={{ width: `${ti.readingComfort.score}%` }}
+                      />
+                    </div>
+                    
+                    <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic">
+                      {ti.readingComfort.feedback}
+                    </p>
+                  </div>
+
+                  {/* Accessibility & Contrast */}
+                  <div className="space-y-2 pt-2.5 border-t border-[#1f1f23]/40">
+                    <div className="flex justify-between items-center text-[9px]">
+                      <span className="text-zinc-500 font-bold uppercase tracking-wider">Accessibility (WCAG)</span>
+                      <span className="text-zinc-400 font-bold font-mono text-[9px]">
+                        Ratio: <span className="text-[#00f0ff]">{ti.accessibility.contrastRatio}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                        ti.accessibility.contrastLevel === 'AAA Passed' ? 'bg-emerald-950 border border-emerald-900/60 text-emerald-400' :
+                        ti.accessibility.contrastLevel === 'AA Passed' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' :
+                        ti.accessibility.contrastLevel === 'Failed' ? 'bg-rose-950 border border-rose-900/60 text-rose-400' :
+                        'bg-zinc-950 border border-zinc-800 text-zinc-500'
+                      }`}>
+                        {ti.accessibility.contrastLevel}
+                      </span>
+
+                      <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                        ti.accessibility.sizeCompliant 
+                          ? 'bg-emerald-950/40 border border-emerald-900/40 text-emerald-500' 
+                          : 'bg-rose-950/60 border border-rose-900/60 text-rose-400'
+                      }`}>
+                        {ti.accessibility.sizeCompliant ? 'Size Compliant (≥12px)' : 'Sizing Alert (<12px)'}
+                      </span>
+                    </div>
+
+                    <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic">
+                      {ti.accessibility.feedback}
+                    </p>
+                  </div>
+
+                  {/* Visual Hierarchy Dominance Scale */}
+                  <div className="space-y-2 pt-2.5 border-t border-[#1f1f23]/40">
+                    <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block">Hierarchy Dominance</span>
+                    <div className="flex gap-4 items-stretch bg-[#050506] border border-[#1f1f23] rounded-md p-3">
+                      {/* Vertical bars representing levels */}
+                      <div className="flex flex-col gap-0.5 w-4 shrink-0 select-none justify-between">
+                        {Array.from({ length: 10 }, (_, i) => 10 - i).map((lvl) => {
+                          const isActive = ti.hierarchyLevel >= lvl;
+                          const activeBgColor = lvl > 7 ? 'bg-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.4)]' : 
+                                                lvl > 4 ? 'bg-indigo-500 shadow-[0_0_4px_rgba(99,102,241,0.4)]' : 
+                                                'bg-cyan-500 shadow-[0_0_4px_rgba(6,182,212,0.4)]';
+                          return (
+                            <div 
+                              key={lvl} 
+                              className={`h-1 rounded transition-all duration-300 ${
+                                isActive ? activeBgColor : 'bg-zinc-950 border border-zinc-900'
+                              }`}
+                              title={`Level ${lvl}`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Explanation */}
+                      <div className="flex flex-col justify-between py-0.5 text-[9px] flex-1">
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <span className="text-zinc-200">Level {ti.hierarchyLevel}</span>
+                            <span className="text-zinc-500">/ 10</span>
+                            <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                              ti.hierarchyLevel >= 8 ? 'bg-purple-950 border border-purple-900/60 text-purple-400' :
+                              ti.hierarchyLevel >= 5 ? 'bg-indigo-950 border border-indigo-900/60 text-indigo-400' :
+                              'bg-cyan-950 border border-cyan-900/60 text-cyan-400'
+                            }`}>
+                              {ti.hierarchyLevel >= 8 ? 'Dominant' :
+                               ti.hierarchyLevel >= 5 ? 'Structural' :
+                               'Supporting'}
+                            </span>
+                          </div>
+                          <p className="text-zinc-500 mt-1 leading-relaxed text-[8.5px]">
+                            {ti.hierarchyLevel >= 8 ? 'Strong visual anchor. Attracts immediate user focus on page load.' :
+                             ti.hierarchyLevel >= 5 ? 'Defines section headers and layout structure.' :
+                             'Supporting body text or auxiliary UI elements.'}
+                          </p>
+                        </div>
+
+                        <div className="text-[7.5px] font-bold text-zinc-600 uppercase tracking-wider flex justify-between mt-2 pt-2 border-t border-zinc-900 w-full">
+                          <span>10 - Peak Focus</span>
+                          <span>1 - Min Focus</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </InspectorCard>
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}
