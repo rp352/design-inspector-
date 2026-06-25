@@ -1471,6 +1471,184 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 6: Background */}
+          <InspectorCard
+            title="Background"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <path d="M3 9h18M3 15h18" />
+              </svg>
+            }
+            emptyMessage="No background style detected on this element."
+            isEmpty={!activeElement || !activeElement.background}
+            placeholderChildren={
+              <div className="space-y-3">
+                <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[60px] flex items-center justify-center opacity-30 checkerboard-bg" />
+                <div className="space-y-1.5 text-[10px] font-mono border-t border-[#1f1f23]/60 pt-2.5">
+                  <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Base Color</span><span className="text-zinc-400 font-semibold">transparent</span></div>
+                </div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.background && (() => {
+              const bg = activeElement.background;
+              
+              const getLayerTypeBadgeClass = (type: string) => {
+                switch (type) {
+                  case 'solid': return 'bg-zinc-950 border border-zinc-800 text-zinc-400';
+                  case 'gradient': return 'bg-purple-950 border border-purple-800 text-purple-300';
+                  case 'image': return 'bg-blue-950 border border-blue-800 text-blue-300';
+                  default: return 'bg-zinc-950 border border-zinc-800 text-zinc-500';
+                }
+              };
+
+              return (
+                <div className="space-y-3.5">
+                  {/* Live Visual Background Preview */}
+                  <div className="relative border border-[#1f1f23] rounded-md h-[70px] overflow-hidden checkerboard-bg shadow-inner flex items-center justify-center">
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        backgroundColor: bg.color,
+                        backgroundImage: activeElement.styles.backgroundImage
+                      }}
+                    />
+                    {/* Tiny overlay label representing size/repeat preview */}
+                    <div className="absolute bottom-1 right-1 bg-black/75 px-1.5 py-0.5 rounded text-[7.5px] font-mono text-zinc-500 border border-zinc-800 leading-none">
+                      {bg.multiple ? 'Multiple Layers' : bg.backgrounds[0]?.type.toUpperCase() || 'NONE'}
+                    </div>
+                  </div>
+
+                  {/* Shorthand / Colors summary */}
+                  <div className="space-y-2 text-[10px] font-mono">
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Base Color</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-200 font-semibold">{bg.color || 'transparent'}</span>
+                        {bg.color && bg.color !== 'transparent' && bg.color !== 'rgba(0, 0, 0, 0)' && (
+                          <CopyButton value={bg.color} />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Shorthand display */}
+                    {bg.shorthand && (
+                      <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-[#1f1f23]/40">
+                        <span className="text-zinc-600">CSS Shorthand</span>
+                        <div className="flex items-center justify-between bg-[#070708] border border-[#1f1f23]/60 rounded px-2.5 py-1">
+                          <span className="text-zinc-400 truncate text-[9px] font-semibold max-w-[170px]" title={bg.shorthand}>
+                            {bg.shorthand}
+                          </span>
+                          <CopyButton value={bg.shorthand} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Layers breakdown */}
+                    <div className="space-y-2.5 pt-2 border-t border-[#1f1f23]/40">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold tracking-wider block">Layers Breakdown</span>
+                      {bg.backgrounds.map((layer, idx) => (
+                        <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 text-[9px] font-bold">Layer {idx + 1}</span>
+                            <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${getLayerTypeBadgeClass(layer.type)}`}>
+                              {layer.type}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5 text-[9px] pl-1.5 border-l border-zinc-800 text-zinc-400">
+                            {layer.type === 'solid' && (
+                              <div className="flex justify-between">
+                                <span className="text-zinc-600">Solid Color</span>
+                                <span className="text-zinc-200 font-semibold">{layer.color}</span>
+                              </div>
+                            )}
+
+                            {layer.type === 'image' && (
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-zinc-600">Image Source</span>
+                                  <a 
+                                    href={layer.imageUrl} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="text-[#00f0ff] hover:underline font-semibold"
+                                  >
+                                    View Image
+                                  </a>
+                                </div>
+                                <span className="text-zinc-500 truncate text-[8.5px] max-w-[200px]" title={layer.imageUrl}>
+                                  {layer.imageUrl}
+                                </span>
+                              </div>
+                            )}
+
+                            {layer.type === 'gradient' && layer.gradient && (
+                              <div className="space-y-1.5">
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-600">Gradient Type</span>
+                                  <span className="text-zinc-300 font-semibold">{layer.gradient.type}-gradient</span>
+                                </div>
+                                {layer.gradient.direction && (
+                                  <div className="flex justify-between">
+                                    <span className="text-zinc-600">Direction / Angle</span>
+                                    <span className="text-zinc-300">{layer.gradient.direction}</span>
+                                  </div>
+                                )}
+                                
+                                {/* Color stops display */}
+                                <div className="space-y-1 pt-1.5 border-t border-zinc-900">
+                                  <span className="text-zinc-600 text-[8px] uppercase font-bold tracking-wider block">Gradient Stops</span>
+                                  <div className="space-y-1">
+                                    {layer.gradient.stops.map((stop, sidx) => (
+                                      <div key={sidx} className="flex items-center justify-between pl-1">
+                                        <div className="flex items-center gap-1.5">
+                                          <div 
+                                            className="w-2 h-2 rounded-full border border-zinc-800 shrink-0" 
+                                            style={{ backgroundColor: stop.color }}
+                                          />
+                                          <span className="text-zinc-300 font-mono text-[8.5px] truncate max-w-[130px]" title={stop.color}>
+                                            {stop.color}
+                                          </span>
+                                        </div>
+                                        <span className="text-zinc-500 font-semibold">{stop.position || 'auto'}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Shared layer params */}
+                            {layer.type !== 'none' && (
+                              <div className="pt-1.5 mt-1 border-t border-zinc-900 space-y-1 text-[8.5px]">
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-600">Position / Size</span>
+                                  <span className="text-zinc-300">{layer.position} | {layer.size}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-zinc-600">Repeat / Attachment</span>
+                                  <span className="text-zinc-300">{layer.repeat} | {layer.attachment}</span>
+                                </div>
+                                {layer.blendMode !== 'normal' && (
+                                  <div className="flex justify-between">
+                                    <span className="text-zinc-600">Blend Mode</span>
+                                    <span className="text-zinc-300 font-semibold uppercase">{layer.blendMode}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </InspectorCard>
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}

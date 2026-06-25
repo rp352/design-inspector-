@@ -108,6 +108,37 @@ export interface AssetData {
   iconDetails?: IconDetails;
 }
 
+export interface ColorStop {
+  color: string;
+  position?: string;
+}
+
+export interface GradientDetails {
+  type: 'linear' | 'radial' | 'conic' | 'other';
+  direction?: string;
+  stops: ColorStop[];
+  raw: string;
+}
+
+export interface SingleBackgroundInfo {
+  type: 'solid' | 'gradient' | 'image' | 'none';
+  color?: string;
+  gradient?: GradientDetails;
+  imageUrl?: string;
+  blendMode: string;
+  attachment: string;
+  position: string;
+  size: string;
+  repeat: string;
+}
+
+export interface BackgroundDetails {
+  color: string;
+  shorthand: string;
+  backgrounds: SingleBackgroundInfo[];
+  multiple: boolean;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -123,6 +154,7 @@ export interface ElementHoverInfo {
   colors: ColorExtractionData;
   layout: LayoutExtractionData;
   asset: AssetData;
+  background?: BackgroundDetails;
 }
 
 export interface TabInfo {
@@ -147,6 +179,7 @@ export interface ElementSelectInfo {
   colors: ColorExtractionData;
   layout: LayoutExtractionData;
   asset: AssetData;
+  background?: BackgroundDetails;
 }
 
 export interface MessagePayloadMap {

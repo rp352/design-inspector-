@@ -3,6 +3,7 @@ import { extractElementColors } from '../shared/colorUtils';
 import { extractElementLayout } from '../shared/layoutUtils';
 import { detectElementAsset } from '../shared/assetUtils';
 import { resolveExternalSVG } from '../shared/svgUtils';
+import { extractBackgroundDetails } from '../shared/backgroundUtils';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -274,13 +275,13 @@ function handleMouseMove(e: MouseEvent) {
   currentElement = target;
   updateOverlay(target);
 
-  // Extract element style parameters
   const rect = target.getBoundingClientRect();
   const styles = getElementStyles(target);
   const typography = extractTypography(target);
   const colors = extractElementColors(target);
   const layout = extractElementLayout(target);
   const asset = detectElementAsset(target);
+  const background = extractBackgroundDetails(target);
   
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -305,7 +306,8 @@ function handleMouseMove(e: MouseEvent) {
       typography,
       colors,
       layout,
-      asset
+      asset,
+      background
     },
     'content'
   ).catch((err) => {
@@ -333,7 +335,8 @@ function handleMouseMove(e: MouseEvent) {
             typography,
             colors,
             layout,
-            asset
+            asset,
+            background
           },
           'content'
         ).catch(() => {});
@@ -373,7 +376,6 @@ function handleMouseClick(e: MouseEvent) {
 
   updateOverlay(target);
 
-  // Extract element telemetry including text content previews
   const rect = target.getBoundingClientRect();
   const styles = getElementStyles(target);
   const typography = extractTypography(target);
@@ -381,6 +383,7 @@ function handleMouseClick(e: MouseEvent) {
   const layout = extractElementLayout(target);
   const asset = detectElementAsset(target);
   const textContent = target.textContent ? target.textContent.trim().substring(0, 150) : '';
+  const background = extractBackgroundDetails(target);
 
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -406,7 +409,8 @@ function handleMouseClick(e: MouseEvent) {
       typography,
       colors,
       layout,
-      asset
+      asset,
+      background
     },
     'content'
   ).catch((err) => {
@@ -434,7 +438,8 @@ function handleMouseClick(e: MouseEvent) {
             typography,
             colors,
             layout,
-            asset
+            asset,
+            background
           },
           'content'
         ).catch(() => {});
