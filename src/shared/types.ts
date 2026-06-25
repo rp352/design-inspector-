@@ -266,6 +266,14 @@ export interface BorderRadiusIntelligence {
   gridCompliance: boolean; // divisible by 2px (typical standard radius scale)
 }
 
+export interface ShadowIntelligence {
+  classification: 'None' | 'Small' | 'Medium' | 'Large' | 'Floating Card' | 'Elevated Modal' | 'Glass Effect';
+  elevationLevel: number; // 0 - 5
+  hasGlassEffect: boolean;
+  shadowsCount: number;
+  layers: ParsedShadow[];
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -288,6 +296,7 @@ export interface ElementHoverInfo {
   colorIntelligence?: ColorIntelligence;
   spacingIntelligence?: SpacingIntelligence;
   borderRadiusIntelligence?: BorderRadiusIntelligence;
+  shadowIntelligence?: ShadowIntelligence;
 }
 
 export interface TabInfo {
@@ -319,6 +328,7 @@ export interface ElementSelectInfo {
   colorIntelligence?: ColorIntelligence;
   spacingIntelligence?: SpacingIntelligence;
   borderRadiusIntelligence?: BorderRadiusIntelligence;
+  shadowIntelligence?: ShadowIntelligence;
 }
 
 export interface MessagePayloadMap {

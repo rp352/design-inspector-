@@ -10,6 +10,7 @@ import { extractTypographyIntelligence } from '../shared/typographyIntelligence'
 import { extractColorIntelligence } from '../shared/colorIntelligence';
 import { extractSpacingIntelligence } from '../shared/spacingIntelligence';
 import { extractBorderRadiusIntelligence } from '../shared/borderRadiusIntelligence';
+import { extractShadowIntelligence } from '../shared/shadowIntelligence';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -295,6 +296,7 @@ function handleMouseMove(e: MouseEvent) {
   const colorIntelligence = extractColorIntelligence(colors);
   const spacingIntelligence = extractSpacingIntelligence(layout);
   const borderRadiusIntelligence = extractBorderRadiusIntelligence(target);
+  const shadowIntelligence = extractShadowIntelligence(effects);
   
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -326,7 +328,8 @@ function handleMouseMove(e: MouseEvent) {
       typographyIntelligence,
       colorIntelligence,
       spacingIntelligence,
-      borderRadiusIntelligence
+      borderRadiusIntelligence,
+      shadowIntelligence
     },
     'content'
   ).catch((err) => {
@@ -361,7 +364,8 @@ function handleMouseMove(e: MouseEvent) {
             typographyIntelligence,
             colorIntelligence,
             spacingIntelligence,
-            borderRadiusIntelligence
+            borderRadiusIntelligence,
+            shadowIntelligence
           },
           'content'
         ).catch(() => {});
@@ -416,6 +420,7 @@ function handleMouseClick(e: MouseEvent) {
   const colorIntelligence = extractColorIntelligence(colors);
   const spacingIntelligence = extractSpacingIntelligence(layout);
   const borderRadiusIntelligence = extractBorderRadiusIntelligence(target);
+  const shadowIntelligence = extractShadowIntelligence(effects);
 
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
@@ -448,7 +453,8 @@ function handleMouseClick(e: MouseEvent) {
       typographyIntelligence,
       colorIntelligence,
       spacingIntelligence,
-      borderRadiusIntelligence
+      borderRadiusIntelligence,
+      shadowIntelligence
     },
     'content'
   ).catch((err) => {
@@ -483,7 +489,8 @@ function handleMouseClick(e: MouseEvent) {
             typographyIntelligence,
             colorIntelligence,
             spacingIntelligence,
-            borderRadiusIntelligence
+            borderRadiusIntelligence,
+            shadowIntelligence
           },
           'content'
         ).catch(() => {});

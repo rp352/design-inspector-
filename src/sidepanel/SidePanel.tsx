@@ -2745,6 +2745,135 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 16: Shadow Intelligence */}
+          <InspectorCard
+            title="Shadow Intelligence"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            }
+            emptyMessage={!activeElement ? "No active element selected to analyze shadows." : "Computing shadow intelligence..."}
+            isEmpty={!activeElement || !activeElement.shadowIntelligence}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Shadow Intelligence</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.shadowIntelligence && (() => {
+              const si = activeElement.shadowIntelligence;
+              return (
+                <div className="space-y-3.5 font-mono text-[10px]">
+                  {/* Style Preview & Classification */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[9px]">
+                      <span className="text-zinc-500 font-bold uppercase tracking-wider">Classification</span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.2 rounded bg-blue-950/60 border border-blue-900/60 text-blue-400 font-mono">
+                        {si.classification}
+                      </span>
+                    </div>
+
+                    {/* Shadow Preview Box */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[120px] flex items-center justify-center p-4 relative shadow-inner overflow-hidden">
+                      <div 
+                        className="w-24 h-12 bg-[#0c0c0e] border border-[#1f1f23] rounded-md transition-all duration-300 flex items-center justify-center text-[8px] text-zinc-600 font-sans"
+                        style={{
+                          boxShadow: activeElement.styles.boxShadow || 'none',
+                          filter: activeElement.styles.filter || 'none',
+                          borderRadius: activeElement.styles.borderRadius || '4px'
+                        }}
+                      >
+                        Float Card
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metrics Row */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {/* Elevation Level */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Elevation Level</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-white">Level {si.elevationLevel}</span>
+                        <span className={`text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                          si.elevationLevel === 0 ? 'bg-zinc-950 border border-zinc-900 text-zinc-500' :
+                          si.elevationLevel <= 2 ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                          'bg-purple-950/60 border border-purple-900/40 text-purple-400'
+                        }`}>
+                          {si.elevationLevel === 0 ? 'Flat' :
+                           si.elevationLevel <= 2 ? 'Low' : 'High'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Glassmorphic Check */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Glassmorphism Signature</span>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-[11px] font-bold text-white">{si.hasGlassEffect ? 'Detected' : 'Not Present'}</span>
+                        {si.hasGlassEffect && (
+                          <span className="text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider bg-purple-950 border border-purple-900/60 text-purple-400">
+                            Glass
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shadow Layers List */}
+                  <div className="space-y-1.5 pt-0.5">
+                    <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider block">Parsed Shadow Layers ({si.shadowsCount})</span>
+                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-1">
+                      {si.layers.length === 0 ? (
+                        <div className="text-center py-4 text-[9px] text-zinc-600 uppercase tracking-widest">No shadow layers found.</div>
+                      ) : (
+                        si.layers.map((layer, idx) => (
+                          <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2 flex flex-col gap-1.5 text-[9.5px]">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider ${
+                                  layer.type === 'box-shadow' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' : 'bg-purple-950 border border-purple-900/60 text-purple-400'
+                                }`}>
+                                  {layer.type === 'box-shadow' ? 'Box' : 'Drop'}
+                                </span>
+                                {layer.inset && (
+                                  <span className="text-[7px] font-bold px-1 py-0.2 rounded uppercase tracking-wider bg-rose-950 border border-rose-900/60 text-rose-400">
+                                    Inset
+                                  </span>
+                                )}
+                                <span className="text-zinc-400 font-semibold">{layer.color}</span>
+                              </div>
+                              <CopyButton value={layer.raw} />
+                            </div>
+                            <div className="grid grid-cols-4 gap-1 text-[8.5px] text-zinc-500 font-mono pl-1 border-l border-zinc-800 leading-tight">
+                              <div>X: <strong className="text-zinc-300 font-semibold">{layer.offsetX}</strong></div>
+                              <div>Y: <strong className="text-zinc-300 font-semibold">{layer.offsetY}</strong></div>
+                              <div>Blur: <strong className="text-zinc-300 font-semibold">{layer.blurRadius}</strong></div>
+                              {layer.type === 'box-shadow' && (
+                                <div>Spread: <strong className="text-zinc-300 font-semibold">{layer.spreadRadius}</strong></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Feedback Guidance */}
+                  <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic pt-1">
+                    {si.classification === 'Glass Effect' ? 'Glassmorphic card detected. Uses soft backdrop blurring and layered opacity.' :
+                     si.classification === 'None' ? 'Flat design style with zero shadow projection. Ideal for nested buttons or minimalist structures.' :
+                     si.classification === 'Small' ? 'Subtle projection suitable for interactive elements like hover-states or input boxes.' :
+                     si.classification === 'Medium' ? 'Balanced depth suitable for standard container cards and floating buttons.' :
+                     si.classification === 'Floating Card' ? 'Pronounced depth suitable for dropdown select menus, popovers, or hover cards.' :
+                     'Maximum depth. Projects high visual elevation suitable for popups and dialog modals.'}
+                  </p>
+                </div>
+              );
+            })()}
+          </InspectorCard>
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}
