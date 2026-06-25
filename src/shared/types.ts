@@ -139,6 +139,50 @@ export interface BackgroundDetails {
   multiple: boolean;
 }
 
+export interface ParsedShadow {
+  type: 'box-shadow' | 'drop-shadow';
+  inset: boolean;
+  offsetX: string;
+  offsetY: string;
+  blurRadius: string;
+  spreadRadius: string;
+  color: string;
+  raw: string;
+}
+
+export interface ParsedBorderRadius {
+  topLeft: string;
+  topRight: string;
+  bottomRight: string;
+  bottomLeft: string;
+  raw: string;
+}
+
+export interface FilterValues {
+  blur?: string;
+  brightness?: string;
+  contrast?: string;
+  grayscale?: string;
+  hueRotate?: string;
+  invert?: string;
+  opacity?: string;
+  saturate?: string;
+  sepia?: string;
+}
+
+export interface EffectDetails {
+  boxShadows: ParsedShadow[];
+  dropShadows: ParsedShadow[];
+  filter: string;
+  backdropFilter: string;
+  opacity: string;
+  mixBlendMode: string;
+  isolation: string;
+  borderRadius: ParsedBorderRadius;
+  filters: FilterValues;
+  backdropFilters: FilterValues;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -155,6 +199,7 @@ export interface ElementHoverInfo {
   layout: LayoutExtractionData;
   asset: AssetData;
   background?: BackgroundDetails;
+  effects?: EffectDetails;
 }
 
 export interface TabInfo {
@@ -180,6 +225,7 @@ export interface ElementSelectInfo {
   layout: LayoutExtractionData;
   asset: AssetData;
   background?: BackgroundDetails;
+  effects?: EffectDetails;
 }
 
 export interface MessagePayloadMap {

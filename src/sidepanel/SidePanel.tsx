@@ -1649,6 +1649,324 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 7: Shadows */}
+          <InspectorCard
+            title="Shadows"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v20M2 12h20" strokeDasharray="3 3" />
+                <rect x="5" y="5" width="10" height="10" rx="1.5" />
+                <rect x="9" y="9" width="10" height="10" rx="1.5" strokeOpacity="0.4" fill="currentColor" fillOpacity="0.1" />
+              </svg>
+            }
+            emptyMessage="No shadows (box-shadow or drop-shadow) detected on this element."
+            isEmpty={!activeElement || !activeElement.effects || (activeElement.effects.boxShadows.length === 0 && activeElement.effects.dropShadows.length === 0)}
+            placeholderChildren={
+              <div className="space-y-2 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Shadow 1</span><span className="text-zinc-400">0px 4px 6px rgba(0, 0, 0, 0.1)</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.effects && (() => {
+              const { boxShadows, dropShadows } = activeElement.effects;
+              const allShadows = [...boxShadows, ...dropShadows];
+              return (
+                <div className="space-y-3">
+                  {allShadows.map((shadow, sIdx) => (
+                    <div key={sIdx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2.5 space-y-2 font-mono text-[9px]">
+                      {/* Header with Type & Full Copy */}
+                      <div className="flex items-center justify-between border-b border-zinc-900 pb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                            shadow.type === 'box-shadow'
+                              ? shadow.inset
+                                ? 'bg-cyan-950 border border-cyan-800 text-cyan-400'
+                                : 'bg-blue-950 border border-blue-800 text-blue-400'
+                              : 'bg-purple-950 border border-purple-800 text-purple-400'
+                          }`}>
+                            {shadow.type === 'box-shadow' ? (shadow.inset ? 'box-shadow (inset)' : 'box-shadow') : 'drop-shadow'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[7.5px] text-zinc-600 uppercase font-bold tracking-wider">Full CSS</span>
+                          <CopyButton value={shadow.raw} />
+                        </div>
+                      </div>
+
+                      {/* Values Grid */}
+                      <div className="grid grid-cols-5 gap-1.5 text-center">
+                        <div className="bg-[#070708] border border-[#1f1f23]/60 p-1 rounded flex flex-col items-center justify-center">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">X</span>
+                          <div className="flex items-center gap-0.5 mt-0.5">
+                            <span className="text-zinc-300 font-semibold text-[8px] truncate max-w-[32px]">{shadow.offsetX}</span>
+                            <CopyButton value={shadow.offsetX} />
+                          </div>
+                        </div>
+
+                        <div className="bg-[#070708] border border-[#1f1f23]/60 p-1 rounded flex flex-col items-center justify-center">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Y</span>
+                          <div className="flex items-center gap-0.5 mt-0.5">
+                            <span className="text-zinc-300 font-semibold text-[8px] truncate max-w-[32px]">{shadow.offsetY}</span>
+                            <CopyButton value={shadow.offsetY} />
+                          </div>
+                        </div>
+
+                        <div className="bg-[#070708] border border-[#1f1f23]/60 p-1 rounded flex flex-col items-center justify-center">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Blur</span>
+                          <div className="flex items-center gap-0.5 mt-0.5">
+                            <span className="text-zinc-300 font-semibold text-[8px] truncate max-w-[32px]">{shadow.blurRadius}</span>
+                            <CopyButton value={shadow.blurRadius} />
+                          </div>
+                        </div>
+
+                        <div className={`bg-[#070708] border border-[#1f1f23]/60 p-1 rounded flex flex-col items-center justify-center ${shadow.type === 'drop-shadow' ? 'opacity-25' : ''}`}>
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Spread</span>
+                          {shadow.type === 'box-shadow' ? (
+                            <div className="flex items-center gap-0.5 mt-0.5">
+                              <span className="text-zinc-300 font-semibold text-[8px] truncate max-w-[32px]">{shadow.spreadRadius}</span>
+                              <CopyButton value={shadow.spreadRadius} />
+                            </div>
+                          ) : (
+                            <span className="text-zinc-500 font-semibold mt-0.5">—</span>
+                          )}
+                        </div>
+
+                        <div className="bg-[#070708] border border-[#1f1f23]/60 p-1 rounded flex flex-col items-center justify-center col-span-1">
+                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Color</span>
+                          <div className="flex items-center gap-1 mt-0.5 max-w-full overflow-hidden px-0.5">
+                            <div 
+                              className="w-1.5 h-1.5 rounded-full border border-zinc-800 shrink-0" 
+                              style={{ backgroundColor: shadow.color }}
+                            />
+                            <CopyButton value={shadow.color} />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Color label footer */}
+                      <div className="flex justify-between items-center text-[7.5px] text-zinc-500 px-1 pt-0.5">
+                        <span>Computed Color</span>
+                        <span className="text-zinc-400 font-semibold truncate max-w-[130px]">{shadow.color}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 8: Filters & Blending */}
+          <InspectorCard
+            title="Filters & Blending"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor" fillOpacity="0.2" />
+              </svg>
+            }
+            emptyMessage="No filters, blend modes, or opacity modifications detected."
+            isEmpty={!activeElement || !activeElement.effects || (
+              (activeElement.effects.filter === 'none' || !activeElement.effects.filter) &&
+              (activeElement.effects.backdropFilter === 'none' || !activeElement.effects.backdropFilter) &&
+              (activeElement.effects.opacity === '1' || !activeElement.effects.opacity) &&
+              (activeElement.effects.mixBlendMode === 'normal' || !activeElement.effects.mixBlendMode) &&
+              (activeElement.effects.isolation === 'auto' || !activeElement.effects.isolation)
+            )}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Opacity</span><span className="text-zinc-400">1</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.effects && (() => {
+              const eff = activeElement.effects;
+              const hasOpacity = eff.opacity !== '1' && eff.opacity !== '';
+              const hasFilter = eff.filter !== 'none' && eff.filter !== '';
+              const hasBackdrop = eff.backdropFilter !== 'none' && eff.backdropFilter !== '';
+              const hasBlend = eff.mixBlendMode !== 'normal' && eff.mixBlendMode !== '';
+              const hasIsolation = eff.isolation !== 'auto' && eff.isolation !== '';
+
+              return (
+                <div className="space-y-2.5 text-[10px] font-mono">
+                  {/* Opacity */}
+                  {hasOpacity && (
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Opacity</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-200 font-semibold">{eff.opacity} ({Math.round(parseFloat(eff.opacity) * 100)}%)</span>
+                        <CopyButton value={eff.opacity} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mix Blend Mode */}
+                  {hasBlend && (
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Mix Blend Mode</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-200 font-semibold uppercase tracking-wider text-[9px] bg-zinc-950 border border-zinc-800 px-1 rounded">{eff.mixBlendMode}</span>
+                        <CopyButton value={eff.mixBlendMode} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Isolation */}
+                  {hasIsolation && (
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span className="text-zinc-600">Isolation</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-zinc-200 font-semibold">{eff.isolation}</span>
+                        <CopyButton value={eff.isolation} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CSS Filter */}
+                  {hasFilter && (
+                    <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-zinc-900">
+                      <span className="text-zinc-600">CSS Filter</span>
+                      <div className="flex items-center justify-between bg-[#070708] border border-[#1f1f23]/60 rounded px-2.5 py-1">
+                        <span className="text-zinc-400 truncate text-[9px] font-semibold max-w-[170px]" title={eff.filter}>
+                          {eff.filter}
+                        </span>
+                        <CopyButton value={eff.filter} />
+                      </div>
+                      
+                      {/* Sub-filter parameters */}
+                      {Object.keys(eff.filters).length > 0 && (
+                        <div className="grid grid-cols-2 gap-1.5 mt-1.5 pl-1.5 border-l border-zinc-800">
+                          {Object.entries(eff.filters).map(([k, v]) => (
+                            <div key={k} className="flex justify-between items-center text-[8.5px] bg-[#070708]/40 px-1.5 py-0.5 rounded">
+                              <span className="text-zinc-600 capitalize">{k}</span>
+                              <span className="text-zinc-300 font-semibold">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CSS Backdrop Filter */}
+                  {hasBackdrop && (
+                    <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-zinc-900">
+                      <span className="text-zinc-600">Backdrop Filter</span>
+                      <div className="flex items-center justify-between bg-[#070708] border border-[#1f1f23]/60 rounded px-2.5 py-1">
+                        <span className="text-zinc-400 truncate text-[9px] font-semibold max-w-[170px]" title={eff.backdropFilter}>
+                          {eff.backdropFilter}
+                        </span>
+                        <CopyButton value={eff.backdropFilter} />
+                      </div>
+
+                      {/* Sub-backdrop filter parameters */}
+                      {Object.keys(eff.backdropFilters).length > 0 && (
+                        <div className="grid grid-cols-2 gap-1.5 mt-1.5 pl-1.5 border-l border-zinc-800">
+                          {Object.entries(eff.backdropFilters).map(([k, v]) => (
+                            <div key={k} className="flex justify-between items-center text-[8.5px] bg-[#070708]/40 px-1.5 py-0.5 rounded">
+                              <span className="text-zinc-600 capitalize">{k}</span>
+                              <span className="text-zinc-300 font-semibold">{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </InspectorCard>
+
+          {/* Card 9: Border Radius */}
+          <InspectorCard
+            title="Border Radius"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M4 20V8a4 4 0 0 1 4-4h12" />
+              </svg>
+            }
+            emptyMessage="No border radius detected on this element."
+            isEmpty={!activeElement || !activeElement.effects || (
+              activeElement.effects.borderRadius.topLeft === '0px' &&
+              activeElement.effects.borderRadius.topRight === '0px' &&
+              activeElement.effects.borderRadius.bottomRight === '0px' &&
+              activeElement.effects.borderRadius.bottomLeft === '0px'
+            )}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Border Radius</span><span className="text-zinc-400">0px</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.effects && (() => {
+              const br = activeElement.effects.borderRadius;
+              return (
+                <div className="space-y-3 font-mono text-[10px]">
+                  {/* Corner visualization block */}
+                  <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[80px] flex items-center justify-center p-3 relative shadow-inner">
+                    <div 
+                      className="w-12 h-12 border-2 border-dashed border-zinc-700 bg-zinc-950 transition-all duration-300"
+                      style={{
+                        borderTopLeftRadius: br.topLeft,
+                        borderTopRightRadius: br.topRight,
+                        borderBottomRightRadius: br.bottomRight,
+                        borderBottomLeftRadius: br.bottomLeft
+                      }}
+                    />
+                    <div className="absolute top-1 left-2 text-[7px] text-zinc-600 uppercase font-bold">Top-Left</div>
+                    <div className="absolute top-1 right-2 text-[7px] text-zinc-600 uppercase font-bold text-right">Top-Right</div>
+                    <div className="absolute bottom-1 left-2 text-[7px] text-zinc-600 uppercase font-bold">Bottom-Left</div>
+                    <div className="absolute bottom-1 right-2 text-[7px] text-zinc-600 uppercase font-bold text-right">Bottom-Right</div>
+                  </div>
+
+                  {/* Corners grid */}
+                  <div className="grid grid-cols-2 gap-2 text-zinc-500">
+                    <div className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-0.5">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Top Left</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-200 font-semibold">{br.topLeft}</span>
+                        <CopyButton value={br.topLeft} />
+                      </div>
+                    </div>
+                    
+                    <div className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-0.5">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Top Right</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-200 font-semibold">{br.topRight}</span>
+                        <CopyButton value={br.topRight} />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-0.5">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Bottom Left</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-200 font-semibold">{br.bottomLeft}</span>
+                        <CopyButton value={br.bottomLeft} />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-0.5">
+                      <span className="text-zinc-600 text-[8px] uppercase font-bold">Bottom Right</span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-200 font-semibold">{br.bottomRight}</span>
+                        <CopyButton value={br.bottomRight} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Raw shorthand */}
+                  <div className="flex flex-col gap-1 text-zinc-500 pt-1.5 border-t border-zinc-900">
+                    <span className="text-zinc-600">Shorthand `border-radius`</span>
+                    <div className="flex items-center justify-between bg-[#070708] border border-[#1f1f23]/60 rounded px-2.5 py-1">
+                      <span className="text-zinc-400 truncate text-[9px] font-semibold max-w-[170px]" title={br.raw}>
+                        {br.raw}
+                      </span>
+                      <CopyButton value={br.raw} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </InspectorCard>
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}
