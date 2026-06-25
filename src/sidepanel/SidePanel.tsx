@@ -7,6 +7,7 @@ import { generateJSONReport, generateCleanCSS, generateTailwindSummary } from '.
 import { inferDesignTokens } from '../shared/tokenInference';
 import { listenForMessages, sendMessageToBackground, sendMessageToTab } from '../shared/messaging';
 import type { TabInfo, ElementHoverInfo, ElementSelectInfo, ParsedShadow } from '../shared/types';
+import { exportToDTCG, exportToFigma, exportToCSS, exportToTailwind } from '../shared/tokenExport';
 
 interface DevLogEntry {
   id: string;
@@ -87,6 +88,7 @@ export const SidePanel: React.FC = () => {
   const [spacingHistory, setSpacingHistory] = useState<number[]>([]);
   const [radiusHistory, setRadiusHistory] = useState<string[]>([]);
   const [inspectedElements, setInspectedElements] = useState<ElementSelectInfo[]>([]);
+  const [card17Tab, setCard17Tab] = useState<'summary' | 'export'>('summary');
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -677,6 +679,19 @@ export const SidePanel: React.FC = () => {
       avgElevation,
       glassCount
     };
+  };
+
+  const downloadTokenFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addDevLog('system', 'DOWNLOAD_TOKENS', `Downloaded ${filename}`);
   };
 
   return (
@@ -3299,199 +3314,348 @@ export const SidePanel: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Typography Subsection */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">1. Typography Scale</span>
-                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-zinc-600">Primary Font</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[#00f0ff] font-sans font-bold">{font.fontName}</span>
-                          <CopyButton value={font.fontName} />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-[8.5px]">
-                        <span className="text-zinc-600">Font Category</span>
-                        <span className={`px-1.5 py-0.2 rounded uppercase font-bold text-[7.5px] border ${
-                          font.source === 'Google Fonts' ? 'bg-[#064e3b]/80 border-[#059669]/50 text-[#34d399]' :
-                          font.source === 'System Font' ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa]' :
-                          'bg-[#78350f]/80 border-[#d97706]/50 text-[#fbbf24]'
-                        }`}>
-                          {font.source}
-                        </span>
-                      </div>
-                    </div>
+                  {/* Tab Navigation */}
+                  <div className="flex border-b border-[#1f1f23] gap-4 mb-3">
+                    <button
+                      onClick={() => setCard17Tab('summary')}
+                      className={`text-[9px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                        card17Tab === 'summary'
+                          ? 'border-[#00f0ff] text-[#00f0ff]'
+                          : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Summary
+                    </button>
+                    <button
+                      onClick={() => setCard17Tab('export')}
+                      className={`text-[9px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                        card17Tab === 'export'
+                          ? 'border-[#00f0ff] text-[#00f0ff]'
+                          : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      Export Engine
+                    </button>
                   </div>
 
-                  {/* Colors Subsection */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">2. Inferred Color Palette</span>
-                    <div className="space-y-1.5">
-                      {colors.length === 0 ? (
-                        <div className="text-zinc-600 text-center py-2 italic text-[8.5px]">No colors identified.</div>
-                      ) : (
-                        colors.map((c, idx) => (
-                          <div key={idx} className="flex flex-col gap-1.5 p-2 bg-[#050506] border border-[#1f1f23] rounded-md text-[9px]">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="relative w-3 h-3 rounded border border-zinc-800 overflow-hidden shrink-0 checkerboard-bg">
-                                  <div className="absolute inset-0" style={{ backgroundColor: c.rgb }} />
-                                </div>
-                                <span className="text-zinc-200 font-bold font-mono">{c.hex}</span>
-                                <span className="text-[7.5px] font-bold px-1 py-0.2 rounded bg-zinc-950 border border-zinc-900 text-zinc-400">
-                                  {c.token}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
-                                  c.compliance === 'AAA' ? 'bg-emerald-950 border border-emerald-900/60 text-emerald-400' :
-                                  c.compliance === 'AA' || c.compliance === 'Pass' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' :
-                                  c.compliance === 'Fail' ? 'bg-rose-950 border border-rose-900/60 text-rose-400' :
-                                  'bg-zinc-950 border border-zinc-800 text-zinc-500'
-                                }`}>
-                                  {c.role === 'Text' || c.role === 'Background' ? `WCAG: ${c.contrast} (${c.compliance})` : `${c.role} contrast: ${c.contrast}`}
-                                </span>
-                                <CopyButton value={c.hex} />
-                              </div>
-                            </div>
-                            <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
-                              Appears {c.count} {c.count === 1 ? 'time' : 'times'} (primarily as {c.role})
+                  {card17Tab === 'summary' ? (
+                    <>
+                      {/* Typography Subsection */}
+                      <div className="space-y-2">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">1. Typography Scale</span>
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2 flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-600">Primary Font</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[#00f0ff] font-sans font-bold">{font.fontName}</span>
+                              <CopyButton value={font.fontName} />
                             </div>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Spacing Subsection */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">3. Spacing scale ({spacing.consistency}% consistency)</span>
-                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
-                      <div className="flex items-center justify-between text-[8.5px] border-b border-[#1f1f23]/60 pb-1.5">
-                        <span className="text-zinc-600">8pt Grid Compliance</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-zinc-200 font-bold">{spacing.compliance8pt}%</span>
-                          <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
-                            spacing.is8ptGrid === 'Strict' ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
-                            spacing.is8ptGrid === 'Mostly' ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
-                            'bg-rose-950/60 border border-rose-900/40 text-rose-400'
-                          }`}>
-                            {spacing.is8ptGrid}
-                          </span>
+                          <div className="flex items-center justify-between text-[8.5px]">
+                            <span className="text-zinc-600">Font Category</span>
+                            <span className={`px-1.5 py-0.2 rounded uppercase font-bold text-[7.5px] border ${
+                              font.source === 'Google Fonts' ? 'bg-[#064e3b]/80 border-[#059669]/50 text-[#34d399]' :
+                              font.source === 'System Font' ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa]' :
+                              'bg-[#78350f]/80 border-[#d97706]/50 text-[#fbbf24]'
+                            }`}>
+                              {font.source}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
+                      {/* Colors Subsection */}
                       <div className="space-y-2">
-                        <span className="text-[7.5px] text-zinc-600 uppercase font-bold tracking-wider block">Top Spacing Rules</span>
-                        {spacing.scale.length === 0 ? (
-                          <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No spacing properties collected.</div>
-                        ) : (
-                          spacing.scale.map((item, idx) => {
-                            const pct = Math.min(100, Math.round((item.valuePx / 32) * 100));
-                            return (
-                              <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-zinc-400 text-[8.5px]">
-                                  <span className="font-semibold text-zinc-300">{item.tokenName}</span>
-                                  <span className="font-mono text-[#00f0ff] font-bold">{item.valuePx}px ({item.count} occurrences)</span>
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">2. Inferred Color Palette</span>
+                        <div className="space-y-1.5">
+                          {colors.length === 0 ? (
+                            <div className="text-zinc-600 text-center py-2 italic text-[8.5px]">No colors identified.</div>
+                          ) : (
+                            colors.map((c, idx) => (
+                              <div key={idx} className="flex flex-col gap-1.5 p-2 bg-[#050506] border border-[#1f1f23] rounded-md text-[9px]">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="relative w-3 h-3 rounded border border-zinc-800 overflow-hidden shrink-0 checkerboard-bg">
+                                      <div className="absolute inset-0" style={{ backgroundColor: c.rgb }} />
+                                    </div>
+                                    <span className="text-zinc-200 font-bold font-mono">{c.hex}</span>
+                                    <span className="text-[7.5px] font-bold px-1 py-0.2 rounded bg-zinc-950 border border-zinc-900 text-zinc-400">
+                                      {c.token}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                                      c.compliance === 'AAA' ? 'bg-emerald-950 border border-emerald-900/60 text-emerald-400' :
+                                      c.compliance === 'AA' || c.compliance === 'Pass' ? 'bg-cyan-950 border border-cyan-900/60 text-cyan-400' :
+                                      c.compliance === 'Fail' ? 'bg-rose-950 border border-rose-900/60 text-rose-400' :
+                                      'bg-zinc-950 border border-zinc-800 text-zinc-500'
+                                    }`}>
+                                      {c.role === 'Text' || c.role === 'Background' ? `WCAG: ${c.contrast} (${c.compliance})` : `${c.role} contrast: ${c.contrast}`}
+                                    </span>
+                                    <CopyButton value={c.hex} />
+                                  </div>
                                 </div>
-                                <div className="h-1.5 w-full bg-zinc-950 border border-zinc-900/60 rounded overflow-hidden">
-                                  <div className="h-full bg-cyan-500/60" style={{ width: `${pct}%` }} />
+                                <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                                  Appears {c.count} {c.count === 1 ? 'time' : 'times'} (primarily as {c.role})
                                 </div>
                               </div>
-                            );
-                          })
-                        )}
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Border Radius Subsection */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">4. Radius scale ({radii.consistency}% consistency)</span>
-                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2.5">
-                      {radii.scale.length === 0 ? (
-                        <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No border radius collected.</div>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-2 text-zinc-500">
-                          {radii.scale.map((item, idx) => (
-                            <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-1 text-[8.5px]">
-                              <span className="text-zinc-600 text-[7px] uppercase font-bold">Standard Size</span>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <div 
-                                    className="w-3.5 h-3.5 border border-zinc-700 bg-zinc-950 shrink-0" 
-                                    style={{ borderRadius: item.value }}
-                                  />
-                                  <span className="text-zinc-200 font-semibold">{item.value}</span>
-                                  <span className="text-[7px] font-bold px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
-                                    {item.tokenName}
-                                  </span>
-                                </div>
-                                <CopyButton value={item.value} />
-                              </div>
-                              <span className="text-[7.5px] text-zinc-600 font-sans leading-none">
-                                {item.count} {item.count === 1 ? 'element' : 'elements'}
+                      {/* Spacing Subsection */}
+                      <div className="space-y-2">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">3. Spacing scale ({spacing.consistency}% consistency)</span>
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
+                          <div className="flex items-center justify-between text-[8.5px] border-b border-[#1f1f23]/60 pb-1.5">
+                            <span className="text-zinc-600">8pt Grid Compliance</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-zinc-200 font-bold">{spacing.compliance8pt}%</span>
+                              <span className={`text-[7.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                                spacing.is8ptGrid === 'Strict' ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' :
+                                spacing.is8ptGrid === 'Mostly' ? 'bg-cyan-950/60 border border-cyan-900/40 text-cyan-400' :
+                                'bg-rose-950/60 border border-rose-900/40 text-rose-400'
+                              }`}>
+                                {spacing.is8ptGrid}
                               </span>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                          </div>
 
-                  {/* Shadows Subsection */}
-                  <div className="space-y-2">
-                    <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">5. Shadow scale ({shadows.consistency}% consistency)</span>
-                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-[8.5px] border-b border-[#1f1f23]/60 pb-2">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Avg Elevation</span>
-                          <span className="text-zinc-200 font-bold text-[10px]">Level {shadows.avgElevation} / 5</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-zinc-600 text-[7px] uppercase font-bold">Glassmorphism</span>
-                          <span className="text-zinc-200 font-bold text-[10px]">
-                            {shadows.glassCount} {shadows.glassCount === 1 ? 'element' : 'elements'}
-                          </span>
+                          <div className="space-y-2">
+                            <span className="text-[7.5px] text-zinc-600 uppercase font-bold tracking-wider block">Top Spacing Rules</span>
+                            {spacing.scale.length === 0 ? (
+                              <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No spacing properties collected.</div>
+                            ) : (
+                              spacing.scale.map((item, idx) => {
+                                const pct = Math.min(100, Math.round((item.valuePx / 32) * 100));
+                                return (
+                                  <div key={idx} className="space-y-1">
+                                    <div className="flex justify-between text-zinc-400 text-[8.5px]">
+                                      <span className="font-semibold text-zinc-300">{item.tokenName}</span>
+                                      <span className="font-mono text-[#00f0ff] font-bold">{item.valuePx}px ({item.count} occurrences)</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-zinc-950 border border-zinc-900/60 rounded overflow-hidden">
+                                      <div className="h-full bg-cyan-500/60" style={{ width: `${pct}%` }} />
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="space-y-2.5">
-                        {shadows.scale.length === 0 ? (
-                          <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No shadow properties collected.</div>
-                        ) : (
-                          shadows.scale.map((item, idx) => (
-                            <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2 space-y-1.5 text-[8.5px]">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[7px] font-bold px-1.5 py-0.2 rounded bg-purple-950 border border-purple-900 text-purple-400 uppercase">
-                                    {item.classification}
-                                  </span>
-                                  <span className="text-zinc-400 font-mono text-[7px] truncate max-w-[80px]" title={item.raw}>
-                                    {item.raw}
+                      {/* Border Radius Subsection */}
+                      <div className="space-y-2">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">4. Radius scale ({radii.consistency}% consistency)</span>
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2.5">
+                          {radii.scale.length === 0 ? (
+                            <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No border radius collected.</div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2 text-zinc-500">
+                              {radii.scale.map((item, idx) => (
+                                <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-1.5 flex flex-col gap-1 text-[8.5px]">
+                                  <span className="text-zinc-600 text-[7px] uppercase font-bold">Standard Size</span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <div 
+                                        className="w-3.5 h-3.5 border border-zinc-700 bg-zinc-950 shrink-0" 
+                                        style={{ borderRadius: item.value }}
+                                      />
+                                      <span className="text-zinc-200 font-semibold">{item.value}</span>
+                                      <span className="text-[7px] font-bold px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                                        {item.tokenName}
+                                      </span>
+                                    </div>
+                                    <CopyButton value={item.value} />
+                                  </div>
+                                  <span className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                                    {item.count} {item.count === 1 ? 'element' : 'elements'}
                                   </span>
                                 </div>
-                                <CopyButton value={item.raw} />
-                              </div>
-                              
-                              <div className="py-2.5 flex items-center justify-center bg-[#070708] rounded border border-zinc-900/60 overflow-hidden">
-                                <div 
-                                  className="w-16 h-4 bg-[#0d0d10] border border-zinc-800 rounded flex items-center justify-center text-[6.5px] text-zinc-600 font-sans"
-                                  style={{ boxShadow: item.raw }}
-                                >
-                                  Preview
-                                </div>
-                              </div>
-
-                              <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
-                                Appears {item.count} {item.count === 1 ? 'time' : 'times'} in this session
-                              </div>
+                              ))}
                             </div>
-                          ))
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+
+                      {/* Shadows Subsection */}
+                      <div className="space-y-2">
+                        <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-wider block">5. Shadow scale ({shadows.consistency}% consistency)</span>
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
+                          <div className="grid grid-cols-2 gap-2 text-[8.5px] border-b border-[#1f1f23]/60 pb-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-zinc-600 text-[7px] uppercase font-bold">Avg Elevation</span>
+                              <span className="text-zinc-200 font-bold text-[10px]">Level {shadows.avgElevation} / 5</span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-zinc-600 text-[7px] uppercase font-bold">Glassmorphism</span>
+                              <span className="text-zinc-200 font-bold text-[10px]">
+                                {shadows.glassCount} {shadows.glassCount === 1 ? 'element' : 'elements'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            {shadows.scale.length === 0 ? (
+                              <div className="text-zinc-600 italic text-center text-[8.5px] py-1">No shadow properties collected.</div>
+                            ) : (
+                              shadows.scale.map((item, idx) => (
+                                <div key={idx} className="bg-[#0c0c0e] border border-[#1f1f23] rounded p-2 space-y-1.5 text-[8.5px]">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[7px] font-bold px-1.5 py-0.2 rounded bg-purple-950 border border-purple-900 text-purple-400 uppercase">
+                                        {item.classification}
+                                      </span>
+                                      <span className="text-zinc-400 font-mono text-[7px] truncate max-w-[80px]" title={item.raw}>
+                                        {item.raw}
+                                      </span>
+                                    </div>
+                                    <CopyButton value={item.raw} />
+                                  </div>
+                                  
+                                  <div className="py-2.5 flex items-center justify-center bg-[#070708] rounded border border-zinc-900/60 overflow-hidden">
+                                    <div 
+                                      className="w-16 h-4 bg-[#0d0d10] border border-zinc-800 rounded flex items-center justify-center text-[6.5px] text-zinc-600 font-sans"
+                                      style={{ boxShadow: item.raw }}
+                                    >
+                                      Preview
+                                    </div>
+                                  </div>
+
+                                  <div className="text-[7.5px] text-zinc-600 font-sans leading-none">
+                                    Appears {item.count} {item.count === 1 ? 'time' : 'times'} in this session
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (() => {
+                    const dtcgContent = exportToDTCG(font, colors, spacing.scale, radii.scale, shadows.scale);
+                    const cssContent = exportToCSS(font, colors, spacing.scale, radii.scale, shadows.scale);
+                    const twContent = exportToTailwind(font, colors, spacing.scale, radii.scale, shadows.scale);
+                    const figmaContent = exportToFigma(font, colors, spacing.scale, radii.scale, shadows.scale);
+
+                    return (
+                      <div className="space-y-4">
+                        {/* 1. DTCG JSON */}
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 font-bold uppercase tracking-wider text-[8px]">JSON (DTCG format)</span>
+                            <span className="text-zinc-600 text-[8px]">tokens.json</span>
+                          </div>
+                          <pre className="bg-[#0c0c0e] border border-zinc-900 rounded p-2 text-zinc-400 text-[8px] overflow-auto max-h-[100px] leading-normal select-text">
+                            <code>{dtcgContent}</code>
+                          </pre>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(dtcgContent);
+                                addDevLog('system', 'COPY_DTCG', 'DTCG JSON copied.');
+                              }}
+                              className="flex-1 bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] text-zinc-300 py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => downloadTokenFile('tokens.json', dtcgContent)}
+                              className="flex-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2. CSS Variables */}
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 font-bold uppercase tracking-wider text-[8px]">CSS Variables</span>
+                            <span className="text-zinc-600 text-[8px]">variables.css</span>
+                          </div>
+                          <pre className="bg-[#0c0c0e] border border-zinc-900 rounded p-2 text-zinc-400 text-[8px] overflow-auto max-h-[100px] leading-normal select-text">
+                            <code>{cssContent}</code>
+                          </pre>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(cssContent);
+                                addDevLog('system', 'COPY_CSS', 'CSS variables copied.');
+                              }}
+                              className="flex-1 bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] text-zinc-300 py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => downloadTokenFile('variables.css', cssContent)}
+                              className="flex-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 3. Tailwind Config */}
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 font-bold uppercase tracking-wider text-[8px]">Tailwind Config</span>
+                            <span className="text-zinc-600 text-[8px]">tailwind.config.js</span>
+                          </div>
+                          <pre className="bg-[#0c0c0e] border border-zinc-900 rounded p-2 text-zinc-400 text-[8px] overflow-auto max-h-[100px] leading-normal select-text">
+                            <code>{twContent}</code>
+                          </pre>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(twContent);
+                                addDevLog('system', 'COPY_TAILWIND', 'Tailwind Config copied.');
+                              }}
+                              className="flex-1 bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] text-zinc-300 py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => downloadTokenFile('tailwind.config.js', twContent)}
+                              className="flex-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 4. Figma Variables */}
+                        <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-zinc-400 font-bold uppercase tracking-wider text-[8px]">Figma Variables</span>
+                            <span className="text-zinc-600 text-[8px]">figma-variables.json</span>
+                          </div>
+                          <pre className="bg-[#0c0c0e] border border-zinc-900 rounded p-2 text-zinc-400 text-[8px] overflow-auto max-h-[100px] leading-normal select-text">
+                            <code>{figmaContent}</code>
+                          </pre>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(figmaContent);
+                                addDevLog('system', 'COPY_FIGMA', 'Figma variables copied.');
+                              }}
+                              className="flex-1 bg-zinc-950 hover:bg-zinc-900 border border-[#1f1f23] text-zinc-300 py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => downloadTokenFile('figma-variables.json', figmaContent)}
+                              className="flex-1 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 text-[#00f0ff] py-1.5 rounded text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </InspectorCard>
             );
