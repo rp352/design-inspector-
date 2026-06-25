@@ -80,6 +80,7 @@ export const SidePanel: React.FC = () => {
   const [hoveredElement, setHoveredElement] = useState<ElementHoverInfo | null>(null);
   const [selectedElement, setSelectedElement] = useState<ElementSelectInfo | null>(null);
   const [detectedStack, setDetectedStack] = useState<string[]>(['MV3']);
+  const [showSvgMarkup, setShowSvgMarkup] = useState(false);
 
   // Add dev log entries for messaging verification
   const addDevLog = (direction: 'in' | 'out' | 'system', type: string, message: string) => {
@@ -135,6 +136,7 @@ export const SidePanel: React.FC = () => {
         setInspectEnabled(false);
         setHoveredElement(null);
         setSelectedElement(null);
+        setShowSvgMarkup(false);
         setStatus('ready');
         setStatusText('Tab navigated.');
         setDetectedStack(['MV3']);
@@ -197,6 +199,7 @@ export const SidePanel: React.FC = () => {
         if (!nextState) {
           setHoveredElement(null);
           setSelectedElement(null);
+          setShowSvgMarkup(false);
         }
       } else if (response && response.error) {
         setStatus('error');
@@ -220,6 +223,7 @@ export const SidePanel: React.FC = () => {
       const response = await sendMessageToBackground('RESET_SELECTION', undefined, 'sidepanel');
       if (response && response.success) {
         setSelectedElement(null);
+        setShowSvgMarkup(false);
         addDevLog('system', 'RESET', 'Selection un-frozen. Resumed hover inspector.');
       } else if (response && response.error) {
         setStatus('error');
@@ -1023,6 +1027,178 @@ export const SidePanel: React.FC = () => {
                           <span>Open</span>
                         </button>
                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const svgDetails = asset.svgDetails;
+              if (svgDetails) {
+                const getSvgTypeLabel = (t: string) => {
+                  switch (t) {
+                    case 'inline': return 'Inline SVG';
+                    case 'sprite': return 'Sprite SVG';
+                    case 'external': return 'External SVG';
+                    default: return 'SVG';
+                  }
+                };
+
+                const getSvgTypeBadge = (t: string) => {
+                  switch (t) {
+                    case 'inline': return 'bg-teal-950 border-teal-800 text-teal-400';
+                    case 'sprite': return 'bg-blue-950 border-blue-800 text-blue-400';
+                    case 'external': return 'bg-emerald-950 border-emerald-800 text-emerald-400';
+                    default: return 'bg-zinc-950 border-zinc-800 text-zinc-400';
+                  }
+                };
+
+                const downloadSVG = (content: string) => {
+                  const blob = new Blob([content], { type: 'image/svg+xml' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'vector.svg';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                };
+
+                return (
+                  <div className="space-y-3">
+                    {/* Live Preview Container */}
+                    <div className="bg-[#050506] border border-[#1f1f23] rounded-md h-[120px] flex items-center justify-center overflow-hidden checkerboard-bg p-2 relative shadow-inner">
+                      {svgDetails.rawContent ? (
+                        <div 
+                          dangerouslySetInnerHTML={{ __html: svgDetails.rawContent }}
+                          className="[&>svg]:max-h-full [&>svg]:max-w-full [&>svg]:w-auto [&>svg]:h-auto [&>svg]:object-contain flex items-center justify-center h-full w-full"
+                        />
+                      ) : (
+                        <span className="text-[9px] text-zinc-600 uppercase tracking-widest font-mono">No Preview</span>
+                      )}
+                    </div>
+
+                    {/* Navigation Tabs (Properties / Source) */}
+                    <div className="flex border-b border-[#1f1f23] gap-4">
+                      <button
+                        onClick={() => setShowSvgMarkup(false)}
+                        className={`text-[9.5px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                          !showSvgMarkup
+                            ? 'border-[#00f0ff] text-[#00f0ff]'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        Properties
+                      </button>
+                      <button
+                        onClick={() => setShowSvgMarkup(true)}
+                        className={`text-[9.5px] font-bold uppercase tracking-wider pb-1.5 border-b-2 cursor-pointer transition-all ${
+                          showSvgMarkup
+                            ? 'border-[#00f0ff] text-[#00f0ff]'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        Source Markup
+                      </button>
+                    </div>
+
+                    {!showSvgMarkup ? (
+                      /* Properties View */
+                      <div className="space-y-2 text-[10px] font-mono">
+                        {/* Type badge */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">SVG Type</span>
+                          <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${getSvgTypeBadge(svgDetails.type)}`}>
+                            {getSvgTypeLabel(svgDetails.type)}
+                          </span>
+                        </div>
+
+                        {/* viewBox */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">viewBox</span>
+                          <span className="text-zinc-200 font-semibold">{svgDetails.viewBox || '—'}</span>
+                        </div>
+
+                        {/* Dimensions */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Dimensions</span>
+                          <span className="text-zinc-200 font-semibold">
+                            {svgDetails.width || '—'} × {svgDetails.height || '—'}
+                          </span>
+                        </div>
+
+                        {/* Styling Properties */}
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Fill / Stroke</span>
+                          <span className="text-zinc-200 font-semibold">
+                            {svgDetails.fill || 'none'} / {svgDetails.stroke || 'none'}{svgDetails.strokeWidth ? ` (${svgDetails.strokeWidth})` : ''}
+                          </span>
+                        </div>
+
+                        {/* Node counts grid */}
+                        <div className="pt-2 border-t border-[#1f1f23]/40">
+                          <span className="text-zinc-600 text-[8px] uppercase font-bold tracking-wider block mb-1.5">Elements Breakdown</span>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <div className="bg-[#070708] border border-[#1f1f23]/60 px-2 py-1.5 rounded flex flex-col">
+                              <span className="text-zinc-600 text-[7.5px] uppercase font-bold tracking-wider leading-none mb-1">Paths</span>
+                              <span className="text-zinc-200 font-semibold text-[11px] leading-none">{svgDetails.pathsCount}</span>
+                            </div>
+                            <div className="bg-[#070708] border border-[#1f1f23]/60 px-2 py-1.5 rounded flex flex-col">
+                              <span className="text-zinc-600 text-[7.5px] uppercase font-bold tracking-wider leading-none mb-1">Groups</span>
+                              <span className="text-zinc-200 font-semibold text-[11px] leading-none">{svgDetails.groupsCount}</span>
+                            </div>
+                            <div className="bg-[#070708] border border-[#1f1f23]/60 px-2 py-1.5 rounded flex flex-col">
+                              <span className="text-zinc-600 text-[7.5px] uppercase font-bold tracking-wider leading-none mb-1">Masks</span>
+                              <span className="text-zinc-200 font-semibold text-[11px] leading-none">{svgDetails.masksCount}</span>
+                            </div>
+                            <div className="bg-[#070708] border border-[#1f1f23]/60 px-2 py-1.5 rounded flex flex-col">
+                              <span className="text-zinc-600 text-[7.5px] uppercase font-bold tracking-wider leading-none mb-1">Clip Paths</span>
+                              <span className="text-zinc-200 font-semibold text-[11px] leading-none">{svgDetails.clipPathsCount}</span>
+                            </div>
+                            <div className="bg-[#070708] border border-[#1f1f23]/60 px-2 py-1.5 rounded flex flex-col">
+                              <span className="text-zinc-600 text-[7.5px] uppercase font-bold tracking-wider leading-none mb-1">Filters</span>
+                              <span className="text-zinc-200 font-semibold text-[11px] leading-none">{svgDetails.filtersCount}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Source View */
+                      <div className="space-y-2.5">
+                        <div className="relative">
+                          <pre className="bg-[#050506] border border-[#1f1f23] rounded-md p-3 font-mono text-[9px] text-zinc-300 overflow-x-auto max-h-[220px] whitespace-pre select-text leading-relaxed">
+                            <code>{svgDetails.rawContent}</code>
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Actions Row */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#1f1f23]/60">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(svgDetails.rawContent);
+                          addDevLog('system', 'COPY_SVG', 'SVG raw content copied.');
+                        }}
+                        className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 text-[9.5px] font-bold py-1.5 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        <span>Copy SVG</span>
+                      </button>
+                      <button
+                        onClick={() => downloadSVG(svgDetails.rawContent)}
+                        className="flex-1 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 hover:border-[#a855f7]/60 text-[#a855f7] text-[9.5px] font-bold py-1.5 rounded flex items-center justify-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Download</span>
+                      </button>
                     </div>
                   </div>
                 );

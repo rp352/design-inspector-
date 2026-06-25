@@ -73,6 +73,22 @@ export interface ImageDetails {
   source?: ImageSourceInfo;
 }
 
+export interface SVGDetails {
+  type: 'inline' | 'external' | 'sprite';
+  viewBox?: string;
+  width?: string;
+  height?: string;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: string;
+  pathsCount: number;
+  groupsCount: number;
+  masksCount: number;
+  clipPathsCount: number;
+  filtersCount: number;
+  rawContent: string;
+}
+
 export interface AssetData {
   type: 'image' | 'svg-inline' | 'svg-external' | 'background-image' | 'video' | 'canvas' | 'lottie' | 'icon' | 'unknown';
   url?: string;
@@ -81,6 +97,7 @@ export interface AssetData {
   dimensions?: { width: number; height: number };
   svgContent?: string;
   imageDetails?: ImageDetails;
+  svgDetails?: SVGDetails;
 }
 
 export interface ElementHoverInfo {

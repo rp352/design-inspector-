@@ -2,6 +2,7 @@ import { listenForMessages, createMessage, sendMessageToBackground } from '../sh
 import { extractElementColors } from '../shared/colorUtils';
 import { extractElementLayout } from '../shared/layoutUtils';
 import { detectElementAsset } from '../shared/assetUtils';
+import { resolveExternalSVG } from '../shared/svgUtils';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -227,6 +228,24 @@ function updateOverlay(el: HTMLElement) {
 }
 
 /**
+ * Asynchronously fetches and parses external SVGs (including external sprite symbols)
+ * to populate SVGDetails for the side panel.
+ */
+async function enrichExternalSVG(asset: any) {
+  if (asset && (asset.type === 'svg-external' || (asset.url && asset.url.toLowerCase().split(/[?#]/)[0].endsWith('.svg')))) {
+    if (asset.url && !asset.svgDetails) {
+      const extDetails = await resolveExternalSVG(asset.url);
+      if (extDetails && Object.keys(extDetails).length > 0) {
+        asset.svgDetails = {
+          type: asset.url.includes('#') ? 'sprite' : 'external',
+          ...extDetails
+        };
+      }
+    }
+  }
+}
+
+/**
  * Handles mouseover target changes on the page.
  */
 function handleMouseMove(e: MouseEvent) {
@@ -292,6 +311,35 @@ function handleMouseMove(e: MouseEvent) {
   ).catch((err) => {
     console.debug('[Design Inspector] Error routing element details:', err.message);
   });
+
+  // Fetch external SVG details asynchronously and update Side Panel if still hovering
+  if (asset.type === 'svg-external' || (asset.url && asset.url.toLowerCase().split(/[?#]/)[0].endsWith('.svg'))) {
+    const targetElementOnStart = target;
+    enrichExternalSVG(asset).then(() => {
+      if (currentElement === targetElementOnStart) {
+        sendMessageToBackground(
+          'ELEMENT_HOVERED',
+          {
+            tagName,
+            className: classText,
+            id: idText,
+            rect: {
+              x: rect.left,
+              y: rect.top,
+              width: rect.width,
+              height: rect.height
+            },
+            styles,
+            typography,
+            colors,
+            layout,
+            asset
+          },
+          'content'
+        ).catch(() => {});
+      }
+    });
+  }
 }
 
 /**
@@ -364,6 +412,35 @@ function handleMouseClick(e: MouseEvent) {
   ).catch((err) => {
     console.debug('[Design Inspector] Error routing selection details:', err.message);
   });
+
+  // Fetch external SVG details asynchronously and update Side Panel if still selected
+  if (asset.type === 'svg-external' || (asset.url && asset.url.toLowerCase().split(/[?#]/)[0].endsWith('.svg'))) {
+    enrichExternalSVG(asset).then(() => {
+      if (currentElement === target) {
+        sendMessageToBackground(
+          'ELEMENT_SELECTED',
+          {
+            tagName,
+            className: classText,
+            id: idText,
+            textContent,
+            rect: {
+              x: rect.left,
+              y: rect.top,
+              width: rect.width,
+              height: rect.height
+            },
+            styles,
+            typography,
+            colors,
+            layout,
+            asset
+          },
+          'content'
+        ).catch(() => {});
+      }
+    });
+  }
 }
 
 function hideOverlay() {

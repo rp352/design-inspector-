@@ -1,5 +1,6 @@
 import type { AssetData } from './types';
 import { detectImageSource } from './imageSourceUtils';
+import { extractSVGDetails } from './svgUtils';
 
 /**
  * Normalizes and extracts mime type from a URL or data URL.
@@ -74,12 +75,14 @@ export function detectElementAsset(el: HTMLElement): AssetData {
   const svgEl = tagName === 'svg' ? el : el.closest('svg');
   if (svgEl) {
     const isSmall = dimensions.width <= 32 && dimensions.height <= 32;
+    const svgDetails = extractSVGDetails(svgEl as SVGSVGElement);
     return {
       type: isSmall ? 'icon' : 'svg-inline',
       isInline: true,
       mimeType: 'image/svg+xml',
       dimensions,
-      svgContent: svgEl.outerHTML
+      svgContent: svgEl.outerHTML,
+      svgDetails
     };
   }
   
