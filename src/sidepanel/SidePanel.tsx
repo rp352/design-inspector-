@@ -920,6 +920,41 @@ export const SidePanel: React.FC = () => {
                         </div>
                       </div>
 
+                      {imageDetails.source && (
+                        <div className="flex items-center justify-between text-zinc-500">
+                          <span className="text-zinc-600">Source Provider</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider ${
+                              imageDetails.source.provider === 'Custom Hosted'
+                                ? 'bg-zinc-950 border border-zinc-800 text-zinc-400'
+                                : 'bg-purple-950 border border-purple-800 text-purple-300'
+                            }`}>
+                              {imageDetails.source.provider}
+                            </span>
+                            {imageDetails.source.confidence < 1.0 && (
+                              <span className="text-[8.5px] text-zinc-500 font-semibold" title="Confidence Score">
+                                ({Math.round(imageDetails.source.confidence * 100)}%)
+                              </span>
+                            )}
+                            {imageDetails.source.documentationLink && (
+                              <a
+                                href={imageDetails.source.documentationLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[9px] text-[#00f0ff] hover:underline font-bold uppercase tracking-wider flex items-center gap-0.5 ml-1"
+                              >
+                                <span>Docs</span>
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="inline-block mt-0.5">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                  <polyline points="15 3 21 3 21 9" />
+                                  <line x1="10" y1="14" x2="21" y2="3" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between text-zinc-500">
                         <span className="text-zinc-600">Resolution</span>
                         <div className="flex flex-col items-end gap-0.5">

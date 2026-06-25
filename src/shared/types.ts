@@ -53,6 +53,12 @@ export interface LayoutExtractionData {
   flexGrid: FlexGridData;
 }
 
+export interface ImageSourceInfo {
+  provider: string;
+  confidence: number;
+  documentationLink?: string;
+}
+
 export interface ImageDetails {
   src: string;
   srcset?: string;
@@ -64,6 +70,7 @@ export interface ImageDetails {
   decoding: string;
   alt: string;
   extension: string;
+  source?: ImageSourceInfo;
 }
 
 export interface AssetData {

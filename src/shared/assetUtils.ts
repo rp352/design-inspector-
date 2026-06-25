@@ -1,4 +1,5 @@
 import type { AssetData } from './types';
+import { detectImageSource } from './imageSourceUtils';
 
 /**
  * Normalizes and extracts mime type from a URL or data URL.
@@ -163,7 +164,8 @@ function detectExtension(url: string): string {
         loading: imgEl.getAttribute('loading') || 'eager',
         decoding: imgEl.getAttribute('decoding') || 'auto',
         alt: imgEl.getAttribute('alt') || '',
-        extension
+        extension,
+        source: detectImageSource(url)
       }
     };
   }
