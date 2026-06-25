@@ -7,6 +7,7 @@ import { extractBackgroundDetails } from '../shared/backgroundUtils';
 import { extractEffectDetails } from '../shared/effectUtils';
 import { inferDesignTokens } from '../shared/tokenInference';
 import { extractTypographyIntelligence } from '../shared/typographyIntelligence';
+import { extractColorIntelligence } from '../shared/colorIntelligence';
 import type { TypographyData } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
@@ -289,6 +290,8 @@ function handleMouseMove(e: MouseEvent) {
   const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
   const typographyIntelligence = extractTypographyIntelligence(target);
   
+  const colorIntelligence = extractColorIntelligence(colors);
+  
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
   const classText = target.className && typeof target.className === 'string'
@@ -316,7 +319,8 @@ function handleMouseMove(e: MouseEvent) {
       background,
       effects,
       tokens,
-      typographyIntelligence
+      typographyIntelligence,
+      colorIntelligence
     },
     'content'
   ).catch((err) => {
@@ -348,7 +352,8 @@ function handleMouseMove(e: MouseEvent) {
             background,
             effects,
             tokens,
-            typographyIntelligence
+            typographyIntelligence,
+            colorIntelligence
           },
           'content'
         ).catch(() => {});
@@ -400,6 +405,8 @@ function handleMouseClick(e: MouseEvent) {
   const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
   const typographyIntelligence = extractTypographyIntelligence(target);
 
+  const colorIntelligence = extractColorIntelligence(colors);
+
   const tagName = target.tagName.toLowerCase();
   const idText = target.id ? `#${target.id}` : '';
   const classText = target.className && typeof target.className === 'string'
@@ -428,7 +435,8 @@ function handleMouseClick(e: MouseEvent) {
       background,
       effects,
       tokens,
-      typographyIntelligence
+      typographyIntelligence,
+      colorIntelligence
     },
     'content'
   ).catch((err) => {
@@ -460,7 +468,8 @@ function handleMouseClick(e: MouseEvent) {
             background,
             effects,
             tokens,
-            typographyIntelligence
+            typographyIntelligence,
+            colorIntelligence
           },
           'content'
         ).catch(() => {});

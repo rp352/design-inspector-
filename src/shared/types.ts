@@ -211,6 +211,27 @@ export interface TypographyIntelligence {
   hierarchyLevel: number;
 }
 
+export interface ColorAnalysis {
+  color: ColorInfo;
+  usage: 'text' | 'background' | 'border' | 'shadow';
+  tokenName: string;
+  description: string;
+  confidence: number;
+}
+
+export interface ColorContrastDetails {
+  ratio: string;
+  ratioNum: number;
+  normalTextCompliant: { aa: boolean; aaa: boolean };
+  largeTextCompliant: { aa: boolean; aaa: boolean };
+  feedback: string;
+}
+
+export interface ColorIntelligence {
+  colors: ColorAnalysis[];
+  contrast: ColorContrastDetails | null;
+}
+
 export interface ElementHoverInfo {
   tagName: string;
   className: string;
@@ -230,6 +251,7 @@ export interface ElementHoverInfo {
   effects?: EffectDetails;
   tokens?: DesignTokenReport;
   typographyIntelligence?: TypographyIntelligence;
+  colorIntelligence?: ColorIntelligence;
 }
 
 export interface TabInfo {
@@ -258,6 +280,7 @@ export interface ElementSelectInfo {
   effects?: EffectDetails;
   tokens?: DesignTokenReport;
   typographyIntelligence?: TypographyIntelligence;
+  colorIntelligence?: ColorIntelligence;
 }
 
 export interface MessagePayloadMap {

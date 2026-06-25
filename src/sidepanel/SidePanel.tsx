@@ -2336,6 +2336,125 @@ export const SidePanel: React.FC = () => {
               );
             })()}
           </InspectorCard>
+
+          {/* Card 13: Color Intelligence */}
+          <InspectorCard
+            title="Color Intelligence"
+            icon={
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                <path d="M7.5 10.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-9 6a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z" />
+              </svg>
+            }
+            emptyMessage={!activeElement ? "No active element selected to analyze colors." : "Computing color intelligence..."}
+            isEmpty={!activeElement || !activeElement.colorIntelligence}
+            placeholderChildren={
+              <div className="space-y-1.5 text-[10px] font-mono opacity-30">
+                <div className="flex justify-between text-zinc-500"><span className="text-zinc-600">Color Intelligence</span><span className="text-zinc-400">Not Ready</span></div>
+              </div>
+            }
+          >
+            {activeElement && activeElement.colorIntelligence && (() => {
+              const ci = activeElement.colorIntelligence;
+              return (
+                <div className="space-y-4 font-mono text-[10px]">
+                  {/* Colors List / Usage Grid */}
+                  <div className="space-y-2">
+                    <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider block">Element Color Usage</span>
+                    <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                      {ci.colors.map((item, idx) => (
+                        <div key={idx} className="flex flex-col gap-1.5 p-2 bg-[#050506] border border-[#1f1f23] rounded-md text-[9.5px]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {/* Color Swatch */}
+                              <div className="relative w-3.5 h-3.5 rounded border border-zinc-800 overflow-hidden shrink-0 checkerboard-bg">
+                                <div 
+                                  className="absolute inset-0" 
+                                  style={{ backgroundColor: item.color.rgb }} 
+                                />
+                              </div>
+                              <span className="text-zinc-400 font-bold uppercase text-[8px] tracking-wider px-1.5 py-0.2 bg-zinc-950 border border-zinc-900 rounded">
+                                {item.usage}
+                              </span>
+                              <span className="text-zinc-200 font-semibold">{item.color.hex.toUpperCase()}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span className="text-[8px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider bg-blue-950 border border-blue-900/60 text-blue-400">
+                                {item.tokenName}
+                              </span>
+                              <CopyButton value={item.color.hex} />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-[8px] text-zinc-500 pl-1 border-l border-zinc-800 leading-tight">
+                            <span className="truncate max-w-[170px]" title={item.description}>{item.description}</span>
+                            <span>Conf: {item.confidence}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contrast Checker Section */}
+                  {ci.contrast && (
+                    <div className="space-y-2 pt-2.5 border-t border-[#1f1f23]/40">
+                      <span className="text-[8px] text-zinc-600 uppercase font-bold tracking-wider block">Contrast Compliance</span>
+                      <div className="bg-[#050506] border border-[#1f1f23] rounded-md p-2.5 space-y-3">
+                        {/* Live Comparison Box */}
+                        <div 
+                          className="rounded border border-zinc-900/80 p-3 text-center flex items-center justify-center font-sans text-xs transition-all duration-300"
+                          style={{ 
+                            backgroundColor: activeElement.colors.background?.rgb || '#000000',
+                            color: activeElement.colors.text?.rgb || '#ffffff'
+                          }}
+                        >
+                          <span className="font-semibold tracking-wide">Contrast Preview Sample</span>
+                        </div>
+
+                        {/* Ratio Display */}
+                        <div className="flex justify-between items-center">
+                          <span className="text-[8.5px] text-zinc-500">WCAG Contrast Ratio</span>
+                          <span className="text-sm font-bold text-white font-mono">{ci.contrast.ratio}</span>
+                        </div>
+
+                        {/* Badges Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-[8px] font-bold uppercase tracking-wider">
+                          <div className="flex flex-col gap-1 bg-[#0a0a0c] border border-zinc-900 p-1.5 rounded">
+                            <span className="text-zinc-600">Normal Text</span>
+                            <div className="flex gap-1.5 mt-0.5">
+                              <span className={`px-1.5 py-0.2 rounded ${ci.contrast.normalTextCompliant.aa ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' : 'bg-rose-950/60 border border-rose-900/40 text-rose-400'}`}>
+                                AA {ci.contrast.normalTextCompliant.aa ? 'Pass' : 'Fail'}
+                              </span>
+                              <span className={`px-1.5 py-0.2 rounded ${ci.contrast.normalTextCompliant.aaa ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' : 'bg-rose-950/60 border border-rose-900/40 text-rose-400'}`}>
+                                AAA {ci.contrast.normalTextCompliant.aaa ? 'Pass' : 'Fail'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-1 bg-[#0a0a0c] border border-zinc-900 p-1.5 rounded">
+                            <span className="text-zinc-600">Large Text (18px+)</span>
+                            <div className="flex gap-1.5 mt-0.5">
+                              <span className={`px-1.5 py-0.2 rounded ${ci.contrast.largeTextCompliant.aa ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' : 'bg-rose-950/60 border border-rose-900/40 text-rose-400'}`}>
+                                AA {ci.contrast.largeTextCompliant.aa ? 'Pass' : 'Fail'}
+                              </span>
+                              <span className={`px-1.5 py-0.2 rounded ${ci.contrast.largeTextCompliant.aaa ? 'bg-emerald-950/60 border border-emerald-900/40 text-emerald-400' : 'bg-rose-950/60 border border-rose-900/40 text-rose-400'}`}>
+                                AAA {ci.contrast.largeTextCompliant.aaa ? 'Pass' : 'Fail'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Feedback Text */}
+                        <p className="text-[8.5px] text-zinc-500 leading-relaxed pl-1.5 border-l border-zinc-800 italic">
+                          {ci.contrast.feedback}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </InspectorCard>
         </div>
 
         {/* Collapsible Developer Console to preserve messaging logging capability */}
