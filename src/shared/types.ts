@@ -342,6 +342,7 @@ export interface MessagePayloadMap {
   'RESET_SELECTION': undefined;
   'STATUS_UPDATE': { status: 'ready' | 'inspecting' | 'error'; message?: string; detectedStack?: string[] };
   'DETECT_STACK': undefined;
+  'GET_INSPECTOR_STATE': undefined;
 }
 
 export interface ExtensionMessage<T extends keyof MessagePayloadMap = keyof MessagePayloadMap> {

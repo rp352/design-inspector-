@@ -26,6 +26,19 @@ export function sendMessageToBackground<T extends keyof MessagePayloadMap>(
 ): Promise<any> {
   const message = createMessage(type, payload, source);
   return new Promise((resolve) => {
+    if (typeof chrome === 'undefined' || !chrome.runtime) {
+      console.warn('[Design Inspector Mock] chrome.runtime is undefined. Suppressing sendMessageToBackground:', message);
+      if (type === 'GET_TAB_INFO') {
+        resolve({
+          tabId: 1,
+          title: 'Local Dev Environment (http://localhost:5173)',
+          url: 'http://localhost:5173/sidepanel.html'
+        });
+      } else {
+        resolve({ error: 'chrome.runtime is undefined' });
+      }
+      return;
+    }
     chrome.runtime.sendMessage(message, (response) => {
       const err = chrome.runtime.lastError;
       if (err) {
@@ -49,6 +62,11 @@ export function sendMessageToTab<T extends keyof MessagePayloadMap>(
 ): Promise<any> {
   const message = createMessage(type, payload, source);
   return new Promise((resolve) => {
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.tabs) {
+      console.warn('[Design Inspector Mock] chrome.tabs/runtime is undefined. Suppressing sendMessageToTab:', message);
+      resolve({ error: 'chrome.tabs is undefined' });
+      return;
+    }
     chrome.tabs.sendMessage(tabId, message, (response) => {
       const err = chrome.runtime.lastError;
       if (err) {
@@ -82,8 +100,15 @@ export function listenForMessages(
     return false;
   };
   
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.onMessage) {
+    console.warn('[Design Inspector Mock] chrome.runtime.onMessage is undefined. Skipping message listener.');
+    return () => {};
+  }
+  
   chrome.runtime.onMessage.addListener(listener);
   return () => {
-    chrome.runtime.onMessage.removeListener(listener);
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.removeListener(listener);
+    }
   };
 }

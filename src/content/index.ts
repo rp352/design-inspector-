@@ -11,7 +11,7 @@ import { extractColorIntelligence } from '../shared/colorIntelligence';
 import { extractSpacingIntelligence } from '../shared/spacingIntelligence';
 import { extractBorderRadiusIntelligence } from '../shared/borderRadiusIntelligence';
 import { extractShadowIntelligence } from '../shared/shadowIntelligence';
-import type { TypographyData } from '../shared/types';
+import type { TypographyData, ElementSelectInfo } from '../shared/types';
 
 console.log('[Design Inspector] Content script loaded on page:', window.location.href);
 
@@ -377,6 +377,63 @@ function handleMouseMove(e: MouseEvent) {
 /**
  * Intercepts document click events (capture phase) to lock selections.
  */
+/**
+ * Extracts comprehensive details from an element to construct selection payload.
+ */
+function extractSelectPayload(target: HTMLElement): ElementSelectInfo {
+  const rect = target.getBoundingClientRect();
+  const styles = getElementStyles(target);
+  const typography = extractTypography(target);
+  const colors = extractElementColors(target);
+  const layout = extractElementLayout(target);
+  const asset = detectElementAsset(target);
+  const textContent = target.textContent ? target.textContent.trim().substring(0, 150) : '';
+  const background = extractBackgroundDetails(target);
+  const effects = extractEffectDetails(target);
+  const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
+  const typographyIntelligence = extractTypographyIntelligence(target);
+
+  const colorIntelligence = extractColorIntelligence(colors);
+  const spacingIntelligence = extractSpacingIntelligence(layout);
+  const borderRadiusIntelligence = extractBorderRadiusIntelligence(target);
+  const shadowIntelligence = extractShadowIntelligence(effects);
+
+  const tagName = target.tagName.toLowerCase();
+  const idText = target.id ? `#${target.id}` : '';
+  const classText = target.className && typeof target.className === 'string'
+    ? `.${target.className.trim().split(/\s+/).filter(Boolean).join('.')}`
+    : '';
+
+  return {
+    tagName,
+    className: classText,
+    id: idText,
+    textContent,
+    rect: {
+      x: rect.left,
+      y: rect.top,
+      width: rect.width,
+      height: rect.height
+    },
+    styles,
+    typography,
+    colors,
+    layout,
+    asset,
+    background,
+    effects,
+    tokens,
+    typographyIntelligence,
+    colorIntelligence,
+    spacingIntelligence,
+    borderRadiusIntelligence,
+    shadowIntelligence
+  };
+}
+
+/**
+ * Intercepts document click events (capture phase) to lock selections.
+ */
 function handleMouseClick(e: MouseEvent) {
   if (!inspectModeEnabled || isSelectionFrozen) return;
 
@@ -405,95 +462,19 @@ function handleMouseClick(e: MouseEvent) {
 
   updateOverlay(target);
 
-  const rect = target.getBoundingClientRect();
-  const styles = getElementStyles(target);
-  const typography = extractTypography(target);
-  const colors = extractElementColors(target);
-  const layout = extractElementLayout(target);
-  const asset = detectElementAsset(target);
-  const textContent = target.textContent ? target.textContent.trim().substring(0, 150) : '';
-  const background = extractBackgroundDetails(target);
-  const effects = extractEffectDetails(target);
-  const tokens = inferDesignTokens({ styles, typography, colors, layout, background, effects }, 'semantic');
-  const typographyIntelligence = extractTypographyIntelligence(target);
-
-  const colorIntelligence = extractColorIntelligence(colors);
-  const spacingIntelligence = extractSpacingIntelligence(layout);
-  const borderRadiusIntelligence = extractBorderRadiusIntelligence(target);
-  const shadowIntelligence = extractShadowIntelligence(effects);
-
-  const tagName = target.tagName.toLowerCase();
-  const idText = target.id ? `#${target.id}` : '';
-  const classText = target.className && typeof target.className === 'string'
-    ? `.${target.className.trim().split(/\s+/).filter(Boolean).join('.')}`
-    : '';
+  const payload = extractSelectPayload(target);
 
   // Send selected element info to background worker (relays to sidepanel)
-  sendMessageToBackground(
-    'ELEMENT_SELECTED',
-    {
-      tagName,
-      className: classText,
-      id: idText,
-      textContent,
-      rect: {
-        x: rect.left,
-        y: rect.top,
-        width: rect.width,
-        height: rect.height
-      },
-      styles,
-      typography,
-      colors,
-      layout,
-      asset,
-      background,
-      effects,
-      tokens,
-      typographyIntelligence,
-      colorIntelligence,
-      spacingIntelligence,
-      borderRadiusIntelligence,
-      shadowIntelligence
-    },
-    'content'
-  ).catch((err) => {
+  sendMessageToBackground('ELEMENT_SELECTED', payload, 'content').catch((err) => {
     console.debug('[Design Inspector] Error routing selection details:', err.message);
   });
 
   // Fetch external SVG details asynchronously and update Side Panel if still selected
+  const asset = payload.asset;
   if (asset.type === 'svg-external' || (asset.url && asset.url.toLowerCase().split(/[?#]/)[0].endsWith('.svg'))) {
     enrichExternalSVG(asset).then(() => {
       if (currentElement === target) {
-        sendMessageToBackground(
-          'ELEMENT_SELECTED',
-          {
-            tagName,
-            className: classText,
-            id: idText,
-            textContent,
-            rect: {
-              x: rect.left,
-              y: rect.top,
-              width: rect.width,
-              height: rect.height
-            },
-            styles,
-            typography,
-            colors,
-            layout,
-            asset,
-            background,
-            effects,
-            tokens,
-            typographyIntelligence,
-            colorIntelligence,
-            spacingIntelligence,
-            borderRadiusIntelligence,
-            shadowIntelligence
-          },
-          'content'
-        ).catch(() => {});
+        sendMessageToBackground('ELEMENT_SELECTED', payload, 'content').catch(() => {});
       }
     });
   }
@@ -637,6 +618,27 @@ listenForMessages((message, _sender, sendResponse) => {
       }
     }
     sendResponse({ success: true, isSelectionFrozen });
+    return false;
+  }
+
+  if (message.type === 'GET_INSPECTOR_STATE') {
+    const payload = isSelectionFrozen && currentElement 
+      ? extractSelectPayload(currentElement) 
+      : null;
+
+    sendResponse({
+      inspectModeEnabled,
+      isSelectionFrozen,
+      selectedElement: payload
+    });
+
+    if (payload && (payload.asset.type === 'svg-external' || (payload.asset.url && payload.asset.url.toLowerCase().split(/[?#]/)[0].endsWith('.svg')))) {
+      enrichExternalSVG(payload.asset).then(() => {
+        if (currentElement && isSelectionFrozen) {
+          sendMessageToBackground('ELEMENT_SELECTED', payload, 'content').catch(() => {});
+        }
+      });
+    }
     return false;
   }
 
